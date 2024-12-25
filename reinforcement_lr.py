@@ -9,7 +9,6 @@ dataset = pd.read_csv('data/dataset.csv', index_col='time', parse_dates=True)
 dataset.drop(['active_power', 'voltage'], inplace=True, axis=1)
 dataset['consumption'].fillna(method='ffill', inplace=True)
 dataset['generation'].fillna(method='ffill', inplace=True)
-print(dataset.isnull().sum())
 
 
 class EnergyEnv(gym.Env):
@@ -170,11 +169,9 @@ plt.tight_layout()
 plt.show()
 plt.close()
 
-import numpy as np
-total_pv_generation = np.sum(pv_generation)
-if total_pv_generation > 0:
-    pv_self_consumption = np.sum(pv_generation - grid_imports) / total_pv_generation * 100
-else:
-    pv_self_consumption = 0
+
+
+pv_self_consumption = np.sum(pv_generation - grid_imports) / np.sum(pv_generation) * 100
+
     
 print(f"pv self consumption: {pv_self_consumption:.2f}%")
