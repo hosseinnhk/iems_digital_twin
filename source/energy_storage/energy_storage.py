@@ -80,7 +80,7 @@ class EnergyStorageModel:
     @eol.setter
     def eol(self, value):
         if (0 <= value <= 100):
-            raise ValueError("eol must must be between 0 and 100")
+            raise ValueError("End of life must must be between 0 and 100")
         self._eol = value
     
     @property
@@ -97,14 +97,33 @@ class EnergyStorageModel:
     def soc_max(self):
         return self.soc_max
     
+    @soc_max.setter
+    def soc_max(self, value):
+        if (0 <= value <= 100): 
+            raise ValueError("soc_max must be between 0 and 100")
+        self._soc_max = value
+    
     @property
     def cell_nominal_capacity(self):
         return self.cell_nominal_capacity
+    
+    @cell_nominal_capacity.setter
+    def cell_nominal_capacity(self, value):
+        if value < 0:
+            raise ValueError("cell_nominal_capacity must be non-negative")
+        self._cell_nominal_capacity = value
     
     @property
     def internal_resistance(self):
         return self.internal_resistance
     
+    @internal_resistance.setter
+    def internal_resistance(self, value):
+        if value < 0:
+            raise ValueError("internal_resistance must be non-negative")
+        self._internal_resistance = value
+        
+        
     @property
     def battery_charge_efficiency(self):
         return self.battery_charge_efficiency
