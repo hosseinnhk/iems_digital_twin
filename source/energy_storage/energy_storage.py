@@ -21,6 +21,7 @@ class EnergyStorageModel:
         self.state_of_power = 0.0  # Power, in Watts (W)
         self.available_energy = 0.0  # Energy, in Watt-hours (Wh)
         self.temperature = 25.0  # Temperature, in Celsius (°C)
+        self.total_remained_capacity = 0.0  # Total Remained Capacity, in Ampere-hours (Ah)
 
         # constants for the model
         self._attributes.update({
@@ -104,22 +105,39 @@ class EnergyStorageModel:
             super().__setattr__(name, value)
             
             
-    def _update_constants(self, new_constants):
-            for key, value in new_constants.items():
-                if hasattr(self, key): 
-                    setattr(self, key, value)
-                else:
-                    raise AttributeError(f"{key} is not a valid constant in EnergyStorageModel")
+    # def _update_constants(self, new_constants):
+    #         for key, value in new_constants.items():
+    #             if hasattr(self, key): 
+    #                 setattr(self, key, value)
+    #             else:
+    #                 raise AttributeError(f"{key} is not a valid constant in EnergyStorageModel")
     
-    # functions related to state of charge ====================================================================================================
-    def update_state_of_charge(self):
-        self.q = self.time_resolution * self.current / 3600
-        # state_of_charge = Q / Qmax
-        return self.state_of_charge
+    def reset_to_initial_state(self):
+        self.state_of_charge = self.state_of_charge_init
+        self.state_of_health = self.state_of_health_init
+        self.available_energy = self.cell_capacity * self.cell_series_number * self.cell_parallel_number * (self.state_of_charge / 100)
+        self.temperature = self.cell_temperature
+        
+        
+    def update_state_of_charge(self) -> None:
+        """
+        Updates the state of charge (SOC) of the battery based on the current, 
+        time resolution, and total remaining capacity.
+        
+        This method modifies the `state_of_charge` attribute in place and does not return a value.
+        """
+        # Calculate the charge transferred during the time interval (Ah)
+        charge_transferred = (self.time_resolution * self.current) / 3600
+        
+        # Update the state of charge
+        self.state_of_charge += charge_transferred / self.total_remained_capacity
+        
+        # Clamp the state of charge within the allowed range
+        self.state_of_charge = max(
+            self.state_of_charge_min, 
+            min(self.state_of_charge, self.state_of_charge_max)
+        )
     
-    def f_state_of_charge(Q, Qmax):
-        state_of_charge = Q / Qmax
-        return state_of_charge
 
     def f_state_of_charge_avg(Qt_1, Qt, Qmax):
         
@@ -136,7 +154,10 @@ class EnergyStorageModel:
         state_of_charge_dev = np.sqrt(abs((3 / delta_Qt) * integral_result))
         return state_of_charge_dev
     
-    # end ====================================================================================================================================
+    
+    def calculate_total_remained_capacity(self):
+        self.total_remained_capacity  = self.cell_series_number * self.cell_parallel_number * self.cell_nominal_capacity * self.state_of_health
+        return self.total_remained_capacity
     
     def calculate_voltage(self):
         return (self.state_of_charge + 735) / 250
@@ -144,7 +165,7 @@ class EnergyStorageModel:
     def update_voltage(self):
         self.voltage = int(self.calculate_voltage() * 100)
     
-    def update_energy(self):
+    def update_available_energy(self):
         self.available_energy = self.cell_series_number * self.cell_parallel_number * self.cell_stored_energy * self.state_of_charge * self.state_of_health
         return self.available_energy
         
