@@ -10,11 +10,31 @@
 import pybamm
 
 
-model = pybamm.lithium_ion.DFN({"SEI": "solvent-diffusion limited"})  # Doyle-Fuller-Newman model
-parameter_values = pybamm.ParameterValues("Chen2020")
+model = pybamm.lithium_ion.DFN(
+    {
+        "SEI": "solvent-diffusion limited",
+        "SEI porosity change": "true",
+        "lithium plating": "partially reversible",
+        "lithium plating porosity change": "true",  # alias for "SEI porosity change"
+        "particle mechanics": ("swelling and cracking", "swelling only"),
+        "SEI on cracks": "true",
+        "loss of active material": "stress-driven",
+        "calculate discharge energy": "true",  # for compatibility with older PyBaMM versions
+    }
+)
+
+
+parameter_values = pybamm.ParameterValues("OKane2022")
+var_pts = {
+    "x_n": 5,  # negative electrode
+    "x_s": 5,  # separator
+    "x_p": 5,  # positive electrode
+    "r_n": 30,  # negative particle
+    "r_p": 30,  # positive particle
+}
 # print(model.variables.search("Capacity"))
-parameter_values.update({"Number of cells connected in series to make a battery": 1})
-parameter_values.update({"Number of electrodes connected in parallel to make a cell": 1})
+# parameter_values.update({"Number of cells connected in series to make a battery": 1})
+# parameter_values.update({"Number of electrodes connected in parallel to make a cell": 1})
 
 probe_experiment = pybamm.Experiment(
     [
@@ -27,8 +47,8 @@ probe_experiment = pybamm.Experiment(
     ]*100
 ) 
 
-sim = pybamm.Simulation(model, parameter_values=parameter_values, experiment=probe_experiment)
-solution = sim.solve(initial_soc=0)  # solve for 1 hour
+sim = pybamm.Simulation(model, parameter_values=parameter_values, experiment=probe_experiment , var_pts=var_pts)
+solution = sim.solve(initial_soc=.5)  # solve for 1 hour
 
 # sim.plot() 
 # sol.plot(["Current [A]", "Voltage [V]"])
@@ -57,10 +77,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 # plt.plot(results['time'], results['voltage'])
 # discharge_capacities = [
-#     cycle["Discharge capacity [A.h]"].entries for cycle in solution.cycles[-3:]
+#     cycle["Discharge capacity [A.h]"].entries for cycle in solution.cycles[-1:]
 # ]
 
-# Optionally, flatten the data if needed and plot
+# # Optionally, flatten the data if needed and plot
 
 # discharge_capacities_flat = np.concatenate(discharge_capacities)
 
@@ -125,15 +145,29 @@ def calculate_degradation(solution):
 
     return discharge_capacities
 
-# Example usage
-if __name__ == "__main__":
-    # Assume `solution` is your PyBaMM solution object with cycle data
-    degradation_values = calculate_degradation(solution)
+# # Example usage
+# if __name__ == "__main__":
+#     # Assume `solution` is your PyBaMM solution object with cycle data
+#     degradation_values = calculate_degradation(solution)
 
-    # Plot the degradation over cycles
-    plt.plot(range(1, len(degradation_values) + 1), degradation_values, marker="o")
-    plt.xlabel("Cycle Number")
-    plt.ylabel("First Discharge Capacity [A.h]")
-    plt.title("Capacity Degradation Over Cycles")
-    plt.grid()
-    plt.show()
+#     # Plot the degradation over cycles
+#     plt.plot(range(1, len(degradation_values) + 1), degradation_values, marker="o")
+#     plt.xlabel("Cycle Number")
+#     plt.ylabel("First Discharge Capacity [A.h]")
+#     plt.title("Capacity Degradation Over Cycles")
+#     plt.grid()
+#     plt.show()
+
+
+
+# method 2
+cell_capacity = solution.summery_variables["Capacity [A.h]"]
+soh = cell_capacity / 5.12 * 100
+
+fig = plt.figure()
+ax = fig.add_subplot(111)
+ax.plot(solution["Time [h]"].entries, soh.entries)
+ax.set_xlabel("Time [h]")
+ax.set_ylabel("State of Health [%]")
+ax.set_title("State of Health Over Time")
+plt.show()

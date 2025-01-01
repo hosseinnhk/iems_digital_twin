@@ -1,4 +1,3 @@
-from scipy.integrate import quad
 import numpy as np
 from datetime import datetime
 from typing import Any
@@ -49,6 +48,7 @@ class EnergyStorageModel:
     
         # single cell dynamic variables
         self.cell_state_of_charge = 0.0  # State of Charge, as a percentage
+        self.cell_relative_state_of_charge = 0.0  # Relative State of Charge, as a percentage
         self.cell_state_of_health = 0.0  # State of Health, as a percentage
         self.cell_voltage = 0.0  # Volts (V
         self.cell_current = 0.0  # Current, in Amps (A)
@@ -60,6 +60,7 @@ class EnergyStorageModel:
 
         # battery pack dynamic variables
         self.state_of_charge = 0.0  # State of Charge, as a percentage
+        self.relative_state_of_charge = 0.0  # Relative State of Charge, as a percentage
         self.state_of_health = 0.0  # State of Health, as a percentage
         self.voltage = 0.0  # Volts (V)
         self.current = 0.0  # Current, in Amps (A)
@@ -106,8 +107,7 @@ class EnergyStorageModel:
             "temperature_max [°C]": 60.0,  # Temperature, in Celsius (°C)
         })
         
-
-   
+        
     def __getattr__(self, name):
         if name in self._attributes:
             return self._attributes[name]
@@ -135,6 +135,7 @@ class EnergyStorageModel:
                 return False
         return True
 
+
     def initialize_pybamm_model(self, parameters: dict):   
         """
         Initializes the PyBaMM model for the battery.
@@ -143,8 +144,28 @@ class EnergyStorageModel:
             pybamm.Model: The PyBaMM model for the battery.
             parameters: The parameter set to use for the PyBaMM model.
         """
-        self.model = pybamm.lithium_ion.DFN()      
+        self.model = pybamm.lithium_ion.DFN(
+        {
+                "SEI": "solvent-diffusion limited",
+                "SEI porosity change": "true",
+                "lithium plating": "partially reversible",
+                "lithium plating porosity change": "true",  # alias for "SEI porosity change"
+                "particle mechanics": ("swelling and cracking", "swelling only"),
+                "SEI on cracks": "true",
+                "loss of active material": "stress-driven",
+                "calculate discharge energy": "true",  # for compatibility with older PyBaMM versions
+            }
+        )
+        # parameter_values = pybamm.ParameterValues("OKane2022")
         parameters_value = pybamm.ParameterValues(parameters['cell_chemistry'])
+        
+        self.var_pts = {
+            "x_n": 5,  # negative electrode
+            "x_s": 5,  # separator
+            "x_p": 5,  # positive electrode
+            "r_n": 30,  # negative particle
+            "r_p": 30,  # positive particle
+        }       
         
         excluded_parameters = ["cell_series_number [uint]", "cell_parallel_number [uint]", "voltage_max [v]", "voltage_min [v]", "total_number_of_cells [uint]", 
             "voltage_max [v]", "cell_voltage_max [v]", "voltage_min [v]", "cell_voltage_min [v]", "nominal_cell_capacity [Ah]", "cell_power_max [w]", "cell_discharge_current_max [A]",
@@ -173,8 +194,8 @@ class EnergyStorageModel:
 
         
         self._attributes["nominal_cell_capacity [Ah]"] = parameters_value["Nominal cell capacity [A.h]"]
-        self._attributes["cell_voltage_max [v]"] = parameters_value["Upper voltage cut-off [V]"]
-        self._attributes["cell_voltage_min [v]"] = parameters_value["Lower voltage cut-off [V]"]
+        self._attributes["cell_voltage_max [v]"] = parameters_value["Open-circuit voltage at 100% SOC [V]"]
+        self._attributes["cell_voltage_min [v]"] = parameters_value["Open-circuit voltage at 0% SOC [V]"]
         
         self.cell_temperature = parameters["ambient_temperature [°C]"]
         self.temperature = self.cell_temperature
@@ -190,8 +211,10 @@ class EnergyStorageModel:
         self._attributes["voltage_min [v]"] = self._attributes["cell_voltage_min [v]"] * self._attributes["cell_series_number [uint]"]
         
 
-        parameters_value["Number of cells connected in series to make a battery"] = self._attributes["cell_series_number [uint]"]
-        parameters_value["Number of electrodes connected in parallel to make a cell"] = self._attributes["cell_parallel_number [uint]"] 
+        # parameters_value["Number of cells connected in series to make a battery"] = self._attributes["cell_series_number [uint]"]
+        # parameters_value["Number of electrodes connected in parallel to make a cell"] = self._attributes["cell_parallel_number [uint]"] 
+        parameters_value["Number of cells connected in series to make a battery"] = 1 # simulate a single cell
+        parameters_value["Number of electrodes connected in parallel to make a cell"] = 1 # simulate a single cell
         self._attributes["total_number_of_cells [uint]"] = self._attributes["cell_series_number [uint]"] * self._attributes["cell_parallel_number [uint]"]
         
         self.current = parameters["current [A]"]
@@ -202,10 +225,10 @@ class EnergyStorageModel:
         parameters_value["Initial temperature [K]"] = parameters["ambient_temperature [°C]"] + 273.15
         parameters_value['Current function [A]' ] = self.cell_current
         
-        sim = pybamm.Simulation(self.model, parameter_values=parameters_value)
-        sim.solve([0, 1])
+        sim = pybamm.Simulation(self.model, parameter_values=parameters_value, var_pts=self.var_pts)
+        sol = sim.solve([0, 1], initial_soc=1)
         
-        self.cell_voltage = sim.solution["Terminal voltage [V]"](1)
+        self.cell_voltage = sol["Terminal voltage [V]"].entries[-1]
         self.voltage = self.cell_voltage * self._attributes["cell_series_number [uint]"]
         
       
@@ -252,39 +275,11 @@ class EnergyStorageModel:
         
         return self.model, parameters_value
     
-     
-    def update_constants_batch(self, new_constants: dict)-> None:
-        """
-        Updates the constants of the battery model.
-        
-        Args:
-            new_constants (dict): A dictionary of new constants.
-            
-        Raises:
-            AttributeError: If the constant is not valid.
-            ValueError: If the value of the constant is invalid
-        """
-        for key, value in new_constants.items():
-            if key not in self._validation_rules:
-                raise AttributeError(f"{key} is not a valid constant in EnergyStorageModel")
-            if not self.validation_rules[key](value):
-                raise ValueError(f"Invalid value for {key}: {value}")
-        
-        for key, value in new_constants.items():
-            self._attributes[key] = value
-            
-    
-    def reset_to_initial_state(self)-> None:
-        """
-        Resets the battery to its initial state.
-        """
-        return True
-
 
     def __run_simulation(self, current:float, ambient_temp:float, time_duration: int, parameter_values, states_list : list) -> tuple[dict, list]:
         
         
-        sim = pybamm.Simulation(self.model, parameter_values=parameter_values, )
+        sim = pybamm.Simulation(self.model, parameter_values=parameter_values, var_pts=self.var_pts)
         solution  = sim.solve([0, time_duration], starting_solution=states_list[-1])
 
         states_list.append(solution)
@@ -318,100 +313,86 @@ class EnergyStorageModel:
         self.cell_power = solution["Power [W]"].entries[-1]
         self.power = self.cell_power * self._attributes["total_number_of_cells [uint]"]
         self.temperature = self.cell_temperature = solution["Cell temperature [C]"].entries[-1]
-        self.state_of_health = self.cell_state_of_health = self.__update_state_of_health(self, solution)
         self.state_of_charge = self.cell_state_of_charge = self.__update_state_of_charge(self, solution)
-        self.cell_stored_energy = self.__update_stored_energy(self, solution)
-        self.stored_energy = self.cell_stored_energy * self._attributes["total_number_of_cells [uint]"]
+        self.state_of_health = self.cell_state_of_health = self.__update_state_of_health(self, solution)
         self.cell_remained_capacity = self.__update_remained_capacity(self, solution)
         self.remained_capacity = self.cell_remained_capacity * self._attributes["total_number_of_cells [uint]"]
+        self.cell_stored_energy = self.__update_stored_energy(self, solution)
+        self.stored_energy = self.cell_stored_energy * self._attributes["total_number_of_cells [uint]"]
         self.state_of_power = self.cell_state_of_power = self.__update_state_of_power(self, solution)
  
-
-    
-    def report_state(self) -> dict:
-        """
-        Records the current state of the battery.
-        
-        Returns:
-            dict: A dictionary of battery parameters with a timestamp.
-        """
-        return {
-            "timestamp": datetime.now(),
-            "state_of_charge": self.state_of_charge,
-            "state_of_health": self.state_of_health,
-            "voltage": self.voltage,
-            "current": self.current,
-            "power": self.power,
-            "state_of_power": self.state_of_power,
-            "stored_energy": self.stored_energy,
-            "temperature": self.temperature,
-            "remained_capacity": self.remained_capacity
-    }
-    
-    
-    def update_current(self, current:float) -> None:
-        """
-        Updates the current flowing into or out of the battery.
-        
-        This method modifies the `current` attribute in place and does not return a value.
-        """
-        self.current = current
-    
-        
-    def __update_state_of_charge(self) -> None:
-        
-        
+           
+    def __update_state_of_charge(self, solution) -> float:
+        soc_init = self.state_of_charge
+        delta_depth_of_discharge = solution["Discharge capacity [A.h]"].entries[0] - solution["Discharge capacity [A.h]"].entries[-1]  # depth of discharge is a negative value 
+        delta_soc = delta_depth_of_discharge / (self.cell_remained_capacity) * 100 # considering the state of health and capacity fading effect
+        soc = soc_init + delta_soc
+        self.relative_state_of_charge = self.__calculate_relative_soc(self, soc)
         return soc
-              
+
+
+    def __calculate_relative_soc(self, soc) -> float:
+        """ 
+        Calculate the relative state of charge of the battery.
+        based on soc min and soc max
+        """
+        soc_relative =  (soc - self._attributes["state_of_charge_min [%]"]) / (self._attributes["state_of_charge_max [%]"] - self._attributes["state_of_charge_min [%]"]) * 100
+        return soc_relative
+
+
+    def __update_state_of_health(self, solution) -> float:
+        """
+        Calculate the State of Health (SOH) of a battery.
+
+        Returns:
+        float: SOH value in percentage.
+        """
+        # method 1
+        soh_init = self.cell_state_of_health
+        Qt_initial = self.cell_remained_capacity
+
+
+        Q_sei = solution["Loss of capacity to negative SEI [A.h]"].entries[0] - solution["Loss of capacity to negative SEI [A.h]"].entries[-1]
+        Q_sei_cr = solution["Loss of capacity to negative SEI on cracks [A.h]"].entries[0] - solution["Loss of capacity to negative SEI on cracks [A.h]"].entries[-1]
+        Q_plating = solution["Loss of capacity to negative lithium plating [A.h]"].entries[0] - solution["Loss of capacity to negative lithium plating [A.h]"].entries[-1]
+        Q_side = solution["Total capacity lost to side reactions [A.h]"].entries[0] - solution["Total capacity lost to side reactions [A.h]"].entries[-1]
+        Q_side = solution["Total capacity lost to side reactions [A.h]"].entries[-1]
+        Q_lli = (
+                    (solution["Total lithium lost [mol]"].entries[0] - solution["Total lithium lost [mol]"].entries[-1]) * 96485.3 / 3600
+        )  # mol to A.h
+
+        Q_lost = Q_sei + Q_sei_cr + Q_plating + Q_side + Q_lli
+        soh_lost = (Q_lost / Qt_initial) * 100 # %
+        soh = soh_init - soh_lost
+        
+        # # method 2
+        # cell_capacity = solution.summery_variables["Capacity [A.h]"]
+        # soh = cell_capacity / self._attributes["nominal_cell_capacity [Ah]"] * 100
+
+        return soh
+ 
+
+    def __update_remained_capacity(self):
+
+        remianed_capacity = self._attributes["nominal_cell_capacity [Ah]"] * (self.cell_state_of_health/100) # Ah
+        return  remianed_capacity 
+
+        
+    def __update_stored_energy(self):
+        
+        cell_stored_energy = self.cell_remained_capacity * self.cell_voltage * (self.cell_state_of_charge / 100)  # Wh
+        return cell_stored_energy  
+    
+    
     def __update_state_of_power(self) -> None:
         """
         Updates the state of power of the battery based on the power.
         
         This method modifies the `state_of_power` attribute in place and does not return a value.
         """
-        self.state_of_power = self.power / self.power_max    
-        
+        cell_state_of_power = None 
+        return cell_state_of_power
     
-    def __update_remained_capacity(self):
-        """
-        Updates the total remained capacity of the battery based on the capacity and state of health.
-        
-        This method modifies the `remained_capacity` attribute in place and does not return a value.
-        """
-        self.remained_capacity  = self.nominal_capacity * (self.state_of_health/100) # Ah
-
-        
-    def __update_stored_energy(self):
-        """
-        Updates the available energy of the battery based on the total remained capacity, state of charge, and voltage.
-        
-        This method modifies the `stored_energy` attribute in place and does not return a value.
-        """
-        
-        self.stored_energy = self.remained_capacity * (self.state_of_charge/100) * self.voltage # Wh   
-    
- 
-    def __update_state_of_health(self, solution) -> float:
-        """
-        Calculate the State of Health (SOH) of a battery.
-
-        Parameters:
-        nominal_capacity (float): Nominal capacity of the battery (Ah).
-        lam_negative (float): Loss of active material in the negative electrode (%).
-        lam_positive (float): Loss of active material in the positive electrode (%).
-        lli (float): Loss of lithium inventory (%).
-
-        Returns:
-        float: SOH value in percentage.
-        """
-        f_negative = 1 - solution["Loss of active material in negative electrode [%]"].entries[-1] / 100
-        f_positive = 1 - solution["Loss of active material in positive electrode [%]"].entries[-1] / 100
-        f_lli = 1 - solution["Loss of lithium inventory [%]"].entries[-1] / 100
-        f_min = min(f_negative, f_positive, f_lli)
-        current_capacity = self.__attributes["nominal_capacity [Ah]"] * f_min
-        soh = (current_capacity / self.__attributes["nominal_capacity [Ah]"]) * 100
-        return soh
-
 
     # def update_number_of_cycles(self):
     #     """
@@ -464,7 +445,65 @@ class EnergyStorageModel:
             print(f"Validation failed: {e}")
             return False, previous_state
         
-                
+    
+    def update_constants_batch(self, new_constants: dict)-> None:
+        """
+        Updates the constants of the battery model.
+        
+        Args:
+            new_constants (dict): A dictionary of new constants.
+            
+        Raises:
+            AttributeError: If the constant is not valid.
+            ValueError: If the value of the constant is invalid
+        """
+        for key, value in new_constants.items():
+            if key not in self._validation_rules:
+                raise AttributeError(f"{key} is not a valid constant in EnergyStorageModel")
+            if not self.validation_rules[key](value):
+                raise ValueError(f"Invalid value for {key}: {value}")
+        
+        for key, value in new_constants.items():
+            self._attributes[key] = value
+            
+    
+    def reset_to_initial_state(self)-> None:
+        """
+        Resets the battery to its initial state.
+        """
+        return True
+
+    
+    def report_state(self) -> dict:
+        """
+        Records the current state of the battery.
+        
+        Returns:
+            dict: A dictionary of battery parameters with a timestamp.
+        """
+        return {
+            "timestamp": datetime.now(),
+            "state_of_charge": self.state_of_charge,
+            "state_of_health": self.state_of_health,
+            "voltage": self.voltage,
+            "current": self.current,
+            "power": self.power,
+            "state_of_power": self.state_of_power,
+            "stored_energy": self.stored_energy,
+            "temperature": self.temperature,
+            "remained_capacity": self.remained_capacity
+    }
+    
+    
+    def update_current(self, current:float) -> None:
+        """
+        Updates the current flowing into or out of the battery.
+        
+        This method modifies the `current` attribute in place and does not return a value.
+        """
+        self.current = current
+
+               
     def __repr__(self):
         return f"""Energy Storage Model Specifications:
         - Cell Voltage: {self.cell_voltage} V
