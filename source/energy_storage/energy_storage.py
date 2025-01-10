@@ -45,6 +45,7 @@ class EnergyStorageModel:
 
         
         self.model = None
+        self.parameter_values =  None
     
         # single cell dynamic variables
         self._cell_state_of_charge = 0.0  # State of Charge, as a percentage
@@ -227,8 +228,8 @@ class EnergyStorageModel:
                 "calculate discharge energy": "true",  # for compatibility with older PyBaMM versions
             }
         )
-        parameters_value = pybamm.ParameterValues("OKane2022")
-        # parameters_value = pybamm.ParameterValues(parameters['cell_chemistry'])
+        parameter_values = pybamm.ParameterValues("OKane2022")
+        # parameter_values = pybamm.ParameterValues(parameters['cell_chemistry'])
         
         self.var_pts = {
             "x_n": 5,  # negative electrode
@@ -264,9 +265,9 @@ class EnergyStorageModel:
         self._attributes["nominal_cell_voltage [V]"]= parameters["nominal_cell_voltage [V]"]
 
         
-        self._attributes["nominal_cell_capacity [Ah]"] = parameters_value["Nominal cell capacity [A.h]"]
-        self._attributes["cell_voltage_max [v]"] = parameters_value["Open-circuit voltage at 100% SOC [V]"]
-        self._attributes["cell_voltage_min [v]"] = parameters_value["Open-circuit voltage at 0% SOC [V]"]
+        self._attributes["nominal_cell_capacity [Ah]"] = parameter_values["Nominal cell capacity [A.h]"]
+        self._attributes["cell_voltage_max [v]"] = parameter_values["Open-circuit voltage at 100% SOC [V]"]
+        self._attributes["cell_voltage_min [v]"] = parameter_values["Open-circuit voltage at 0% SOC [V]"]
         
         self._cell_temperature = parameters["ambient_temperature [°C]"]
         self._temperature = self._cell_temperature
@@ -282,21 +283,21 @@ class EnergyStorageModel:
         self._attributes["voltage_min [v]"] = self._attributes["cell_voltage_min [v]"] * self._attributes["cell_series_number [uint]"]
         
 
-        # parameters_value["Number of cells connected in series to make a battery"] = self._attributes["cell_series_number [uint]"]
-        # parameters_value["Number of electrodes connected in parallel to make a cell"] = self._attributes["cell_parallel_number [uint]"] 
-        parameters_value["Number of cells connected in series to make a battery"] = 1 # simulate a single cell
-        parameters_value["Number of electrodes connected in parallel to make a cell"] = 1 # simulate a single cell
+        # parameter_values["Number of cells connected in series to make a battery"] = self._attributes["cell_series_number [uint]"]
+        # parameter_values["Number of electrodes connected in parallel to make a cell"] = self._attributes["cell_parallel_number [uint]"] 
+        parameter_values["Number of cells connected in series to make a battery"] = 1 # simulate a single cell
+        parameter_values["Number of electrodes connected in parallel to make a cell"] = 1 # simulate a single cell
         self._attributes["total_number_of_cells [uint]"] = self._attributes["cell_series_number [uint]"] * self._attributes["cell_parallel_number [uint]"]
         
         self.current = parameters["current [A]"]
         self._cell_current  = self.current / self._attributes["cell_parallel_number [uint]"] 
         
         
-        parameters_value["Ambient temperature [K]"] = parameters["ambient_temperature [°C]"] + 273.15
-        parameters_value["Initial temperature [K]"] = parameters["ambient_temperature [°C]"] + 273.15
-        parameters_value['Current function [A]' ] = self._cell_current
+        parameter_values["Ambient temperature [K]"] = parameters["ambient_temperature [°C]"] + 273.15
+        parameter_values["Initial temperature [K]"] = parameters["ambient_temperature [°C]"] + 273.15
+        parameter_values['Current function [A]' ] = self._cell_current
         
-        sim = pybamm.Simulation(self.model, parameter_values=parameters_value, var_pts=self.var_pts)
+        sim = pybamm.Simulation(self.model, parameter_values=parameter_values, var_pts=self.var_pts)
         sol = sim.solve([0, 1], initial_soc=self._attributes["state_of_charge_init [%]"]/100)
         
         self._cell_voltage = sol["Terminal voltage [V]"].entries[-1]
@@ -331,10 +332,11 @@ class EnergyStorageModel:
         self._attributes["discharge_efficiency [%]"] = parameters["discharge_efficiency [%]"]
         self._attributes["temperature_max [°C]"] = parameters["temperature_max [°C]"]
         
-        self._attributes["conctact_resistance [mΩ]"] = parameters_value["Contact resistance [Ohm]"] * 1000
+        self._attributes["conctact_resistance [mΩ]"] = parameter_values["Contact resistance [Ohm]"] * 1000
         self._attributes["c_rate_charge_max"] = parameters["c_rate_charge_max"]
         self._attributes["c_rate_discharge_max"] = parameters["c_rate_discharge_max"]
         
+        self.parameter_values = parameter_values
         
         for key in self._validation_rules:
         
@@ -344,14 +346,30 @@ class EnergyStorageModel:
                 raise ValueError(f"Invalid value for {key}: {value}")
         logging.info("All parameters are intialized and validated")
         
-        return self.model, parameters_value
+        #return   self.model, parameter_values
     
+    
+    def simulate_and_update_state(self, current:float, ambient_temp:float, time_duration: int, previous_state=None) -> tuple[bool, list]:
 
-    def __run_simulation(self, current:float, ambient_temp:float, time_duration: int, parameter_values, states_list : list) -> list:
-        
-        
-        sim = pybamm.Simulation(self.model, parameter_values=parameter_values, var_pts=self.var_pts)
-        solution  = sim.solve([0, time_duration], starting_solution=states_list[-1])
+        try:
+            current_state  = self.__run_simulation(current, ambient_temp, time_duration, states_list=previous_state)
+            self.__update_params(current_state)
+            # self.__validate_operation()
+            return True, current_state
+        except ValueError as e:
+            # print(f"Validation failed: {e}")
+            return False, previous_state
+
+
+    def __run_simulation(self, current:float, ambient_temp:float, time_duration: int, states_list = None) -> list:
+        self.parameter_values["Current function [A]"] = current
+        self.parameter_values["Ambient temperature [K]"] = ambient_temp + 273.15
+        sim = pybamm.Simulation(self.model, parameter_values=self.parameter_values, var_pts=self.var_pts)
+        if states_list is None:
+            states_list = []
+            solution  = sim.solve([0, time_duration])  
+        else:
+            solution  = sim.solve([0, time_duration], starting_solution=states_list[-1])
 
         states_list.append(solution)
         # results = {
@@ -376,7 +394,7 @@ class EnergyStorageModel:
         """
         
         solution = solutions[-1]
-        self._state_of_charge = solution["State of Charge [%]"].entries[-1]
+        # self._state_of_charge = solution["State of Charge [%]"].entries[-1]
         self._voltage = solution["Battery voltage [V]"].entries[-1]
         self._cell_voltage = solution["Voltage [V]"].entries[-1]
         self._cell_current = solution["Current [A]"].entries[-1]
@@ -384,13 +402,13 @@ class EnergyStorageModel:
         self._cell_power = solution["Power [W]"].entries[-1]
         self.power = self._cell_power * self._attributes["total_number_of_cells [uint]"]
         self._temperature = self._cell_temperature = solution["Cell temperature [C]"].entries[-1]
-        self._state_of_charge = self._cell_state_of_charge = self.__update_state_of_charge(self, solution)
-        self._state_of_health = self._cell_state_of_health = self.__update_state_of_health(self, solution)
-        self._cell_remained_capacity= self.__update_remained_capacity(self, solution)
+        self._state_of_charge = self._cell_state_of_charge = self.__update_state_of_charge(solution)
+        self._state_of_health = self._cell_state_of_health = self.__update_state_of_health(solution)
+        self._cell_remained_capacity= self.__update_remained_capacity()
         self._remained_capacity = self._cell_remained_capacity* self._attributes["total_number_of_cells [uint]"]
-        self._cell_stored_energy = self.__update_stored_energy(self, solution)
+        self._cell_stored_energy = self.__update_stored_energy()
         self._stored_energy = self._cell_stored_energy * self._attributes["total_number_of_cells [uint]"]
-        self._state_of_power = self._cell_state_of_power = self.__update_state_of_power(self, solution)
+        self._state_of_power = self._cell_state_of_power = self.__update_state_of_power()
  
            
     def __update_state_of_charge(self, solution) -> float:
@@ -398,7 +416,7 @@ class EnergyStorageModel:
         delta_depth_of_discharge = solution["Discharge capacity [A.h]"].entries[0] - solution["Discharge capacity [A.h]"].entries[-1]  # depth of discharge is a negative value 
         delta_soc = delta_depth_of_discharge / (self.cell_remained_capacity) * 100 # considering the state of health and capacity fading effect
         soc = soc_init + delta_soc
-        self._relative_state_of_charge = self.__calculate_relative_soc(self, soc)
+        self._relative_state_of_charge = self.__calculate_relative_soc(soc)
         return soc
 
 
@@ -505,16 +523,7 @@ class EnergyStorageModel:
     #         raise(ValueError("End of Life reached"))
 
      
-    def simulate_and_update_state(self, current:float, ambient_temp:float, time_duration: int, previous_state: list) -> tuple[bool, list]:
 
-        try:
-            current_state  = self.__run_simulation(self, current, ambient_temp, time_duration, previous_state)
-            self.__update_params(self, current_state)
-            self.__validate_operation(self)
-            return True, current_state
-        except ValueError as e:
-            print(f"Validation failed: {e}")
-            return False, previous_state
         
     
     # def update_constants_batch(self, new_constants: dict)-> None:

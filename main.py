@@ -29,8 +29,20 @@ parameters = {
     "c_rate_charge_max": 1.0,
     "c_rate_discharge_max": 1.0,
     }
+
 ess.initialize_pybamm_model(parameters=parameters)
 
+print(ess.report_state())
+
+results = []
+for i in range(5):
+    if i==0:
+        result, ess.state = ess.simulate_and_update_state(current= 5, time_duration=3600, ambient_temp=30.0, previous_state=None)
+    else:
+        result, ess.state = ess.simulate_and_update_state(current= 5, time_duration=3600, ambient_temp=30.0, previous_state=ess.state)
+    results.append(result)
+    
+print(ess.report_state())
 # model = pybamm.lithium_ion.DFN(
 #     {
 #         "SEI": "solvent-diffusion limited",
