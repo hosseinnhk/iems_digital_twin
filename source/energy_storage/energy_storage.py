@@ -50,7 +50,7 @@ class EnergyStorageModel:
         self.cell_state_of_charge = 0.0  # State of Charge, as a percentage
         self.cell_relative_state_of_charge = 0.0  # Relative State of Charge, as a percentage
         self.cell_state_of_health = 0.0  # State of Health, as a percentage
-        self.cell_voltage = 0.0  # Volts (V
+        self.cell_voltage = 0.0  # Volts (V)
         self.cell_current = 0.0  # Current, in Amps (A)
         self.cell_power = 0.0  # Power, in Watts (W)
         self.cell_state_of_power = 0.0  # Power/Power_max in percentage (%)
@@ -276,7 +276,7 @@ class EnergyStorageModel:
         return self.model, parameters_value
     
 
-    def __run_simulation(self, current:float, ambient_temp:float, time_duration: int, parameter_values, states_list : list) -> tuple[dict, list]:
+    def __run_simulation(self, current:float, ambient_temp:float, time_duration: int, parameter_values, states_list : list) -> list:
         
         
         sim = pybamm.Simulation(self.model, parameter_values=parameter_values, var_pts=self.var_pts)
@@ -434,7 +434,7 @@ class EnergyStorageModel:
             raise(ValueError("End of Life reached"))
 
      
-    def simulate_and_update_state(self, current:float, ambient_temp:float, time_duration: int, previous_state: dict) -> tuple[bool, dict]:
+    def simulate_and_update_state(self, current:float, ambient_temp:float, time_duration: int, previous_state: list) -> tuple[bool, list]:
 
         try:
             current_state  = self.__run_simulation(self, current, ambient_temp, time_duration, previous_state)
