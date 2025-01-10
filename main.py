@@ -2,13 +2,34 @@ from source.energy_storage import energy_storage as es
 
 ess = es.EnergyStorageModel()
 
-ess.end_of_life = 11
+# ess._attributes["end_of_life_point [%]"] = 11
+# ess.state_of_charge = 50
 
-
-print(ess.__repr__())
-
-# import pybamm
-
+# print(ess.__repr__())
+parameters = {
+    "cell_model": "DFN",
+    "cell_chemistry": "Chen2020",
+    "time_resolution [s]": 3600,
+    "nominal_voltage [v]": 345.0,
+    "nominal_capacity [Ah]": 25.0,
+    "ambient_temperature [°C]": 25.0,
+    "current [A]": 0.0,
+    "power_max [w]": 5000.0,
+    "state_of_health_init [%]": 100.0,
+    "state_of_charge_init [%]": 50.0,
+    "nominal_cell_voltage [V]": 3.63,
+    "discharge_current_max [A]": 20.0,
+    "charge_current_max [A]": 10.0,
+    "state_of_charge_min [%]": 15.0,
+    "state_of_charge_max [%]": 90.0,
+    "end_of_life_point [%]": 80.0,
+    "charge_efficiency [%]": 96.0,
+    "discharge_efficiency [%]": 96.0,
+    "temperature_max [°C]": 60.0,
+    "c_rate_charge_max": 1.0,
+    "c_rate_discharge_max": 1.0,
+    }
+ess.initialize_pybamm_model(parameters=parameters)
 
 # model = pybamm.lithium_ion.DFN(
 #     {

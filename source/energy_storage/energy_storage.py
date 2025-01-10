@@ -47,46 +47,46 @@ class EnergyStorageModel:
         self.model = None
     
         # single cell dynamic variables
-        self.cell_state_of_charge = 0.0  # State of Charge, as a percentage
-        self.cell_relative_state_of_charge = 0.0  # Relative State of Charge, as a percentage
-        self.cell_state_of_health = 0.0  # State of Health, as a percentage
-        self.cell_voltage = 0.0  # Volts (V)
-        self.cell_current = 0.0  # Current, in Amps (A)
-        self.cell_power = 0.0  # Power, in Watts (W)
-        self.cell_state_of_power = 0.0  # Power/Power_max in percentage (%)
-        self.cell_stored_energy = 0.0 # stored energy, in Watt-hours (Wh)
-        self.cell_temperature = 0.0  # Temperature, in Celsius (°C)
-        self.cell_remained_capacity = 0.0 # Cell capacity (Ah)
+        self._cell_state_of_charge = 0.0  # State of Charge, as a percentage
+        self._cell_relative_state_of_charge = 0.0  # Relative State of Charge, as a percentage
+        self._cell_state_of_health = 0.0  # State of Health, as a percentage
+        self._cell_voltage = 0.0  # Volts (V)
+        self._cell_current = 0.0  # Current, in Amps (A)
+        self._cell_power = 0.0  # Power, in Watts (W)
+        self._cell_state_of_power = 0.0  # Power/Power_max in percentage (%)
+        self._cell_stored_energy = 0.0 # stored energy, in Watt-hours (Wh)
+        self._cell_temperature = 0.0  # Temperature, in Celsius (°C)
+        self._cell_remained_capacity= 0.0 # Cell capacity (Ah)
 
         # battery pack dynamic variables
-        self.state_of_charge = 0.0  # State of Charge, as a percentage
-        self.relative_state_of_charge = 0.0  # Relative State of Charge, as a percentage
-        self.state_of_health = 0.0  # State of Health, as a percentage
-        self.voltage = 0.0  # Volts (V)
+        self._state_of_charge = 0.0  # State of Charge, as a percentage
+        self._relative_state_of_charge = 0.0  # Relative State of Charge, as a percentage
+        self._state_of_health = 0.0  # State of Health, as a percentage
+        self._voltage = 0.0  # Volts (V)
         self.current = 0.0  # Current, in Amps (A)
         self.power = 0.0  # Power, in Watts (W)
-        self.state_of_power = 0.0  # Power/Power_max in percentage (%)
-        self.stored_energy = 0.0  # stored Energy, in Watt-hours (Wh)
-        self.temperature = 0.0  # Temperature, in Celsius (°C)
-        self.remained_capacity = 0.0  # Total Remained Capacity, in Ampere-hours (Ah)
+        self._state_of_power = 0.0  # Power/Power_max in percentage (%)
+        self._stored_energy = 0.0  # stored Energy, in Watt-hours (Wh)
+        self._temperature = 0.0  # Temperature, in Celsius (°C)
+        self._remained_capacity = 0.0  # Total Remained Capacity, in Ampere-hours (Ah)
 
         # constants for the model
         self._attributes.update({
             "time_resolution [s]": 1.0,  # Time resolution, in seconds (s)
             "nominal_voltage [v]": 340.0,  # Voltage, in Volts (V)
-            "nominal_cell_voltage [V]": 3.63,  # Volts (V)
-            "voltage_max [v]": 394.8,  # Voltage, in Volts (V)
-            "cell_voltage_max [v]": 4.2,  # Voltage, in Volts (V)
+            "nominal_cell_voltage [V]": 3.63,  # Volts (V)  //pybamm
+            "voltage_max [v]": 394.8,  # Voltage, in Volts (V)  
+            "cell_voltage_max [v]": 4.2,  # Voltage, in Volts (V) //pybamm
             "voltage_min [v]": 235,  # Voltage, in Volts (V)
-            "cell_voltage_min [v]": 2.5,  # Voltage, in Volts (V)
+            "cell_voltage_min [v]": 2.5,  # Voltage, in Volts (V) //pybamm
             "nominal_capacity [Ah]": 30.0, # Ampere-hour (Ah)
-            "nominal_cell_capacity [Ah]": 5.0,  # Ampere-hour (Ah)
+            "nominal_cell_capacity [Ah]": 5.0,  # Ampere-hour (Ah) //pybamm
             "power_max [w]": 2000.0,  # Power, in Watts (W)
-            "cell_power_max [w]": 3.55,  # Power, in Watts (W)
+            "cell_power_max [w]": 3.55,  # Power, in Watts (W) 
             "discharge_current_max [A]": 6.0,  # Amps (A)
-            "cell_discharge_current_max [A]": 1.0,  # Amps (A)
+            "cell_discharge_current_max [A]": 1.0,  # Amps (A) 
             "charge_current_max [A]": 6.0,  # Amps (A)
-            "cell_charge_current_max [A]": 1.0,  # Amps (A)
+            "cell_charge_current_max [A]": 1.0,  # Amps (A) 
 
             # common parameters
             "cell_model" : "DFN",
@@ -107,6 +107,77 @@ class EnergyStorageModel:
             "temperature_max [°C]": 60.0,  # Temperature, in Celsius (°C)
         })
         
+    @property
+    def cell_state_of_charge(self):
+        return self._cell_state_of_charge
+
+    @property
+    def cell_relative_state_of_charge(self):
+        return self._cell_relative_state_of_charge
+
+    @property
+    def cell_state_of_health(self):
+        return self._cell_state_of_health
+
+    @property
+    def cell_voltage(self):
+        return self._cell_voltage
+
+    @property
+    def cell_current(self):
+        return self._cell_current
+
+    @property
+    def cell_power(self):
+        return self._cell_power
+
+    @property
+    def cell_state_of_power(self):
+        return self._cell_state_of_power
+
+    @property
+    def cell_stored_energy(self):
+        return self._cell_stored_energy
+
+    @property
+    def cell_temperature(self):
+        return self._cell_temperature
+
+    @property
+    def cell_remained_capacity(self):
+        return self._cell_remained_capacity
+
+    @property
+    def state_of_charge(self):
+        return self._state_of_charge
+
+    @property
+    def relative_state_of_charge(self):
+        return self._relative_state_of_charge
+
+    @property
+    def state_of_health(self):
+        return self._state_of_health
+
+    @property
+    def voltage(self):
+        return self._voltage
+
+    @property
+    def state_of_power(self):
+        return self._state_of_power
+
+    @property
+    def stored_energy(self):
+        return self._stored_energy
+
+    @property
+    def temperature(self):
+        return self._temperature
+
+    @property
+    def remained_capacity(self):
+        return self._remained_capacity        
         
     def __getattr__(self, name):
         if name in self._attributes:
@@ -156,8 +227,8 @@ class EnergyStorageModel:
                 "calculate discharge energy": "true",  # for compatibility with older PyBaMM versions
             }
         )
-        # parameter_values = pybamm.ParameterValues("OKane2022")
-        parameters_value = pybamm.ParameterValues(parameters['cell_chemistry'])
+        parameters_value = pybamm.ParameterValues("OKane2022")
+        # parameters_value = pybamm.ParameterValues(parameters['cell_chemistry'])
         
         self.var_pts = {
             "x_n": 5,  # negative electrode
@@ -185,8 +256,8 @@ class EnergyStorageModel:
         self._attributes["state_of_charge_init [%]"] = parameters["state_of_charge_init [%]"]
         self._attributes["state_of_health_init [%]"] = parameters["state_of_health_init [%]"]
         
-        self.cell_state_of_charge = self.state_of_charge = self._attributes.get("state_of_charge_init [%]", 50.0)      
-        self.cell_state_of_health = self.state_of_health = self._attributes.get("state_of_health_init [%]", 100.0)
+        self._cell_state_of_charge = self._state_of_charge = self._attributes.get("state_of_charge_init [%]", 50.0)      
+        self._cell_state_of_health = self._state_of_health = self._attributes.get("state_of_health_init [%]", 100.0)
         
         self._attributes["nominal_capacity [Ah]"] = parameters["nominal_capacity [Ah]"] 
         self._attributes["nominal_voltage [v]"] = parameters["nominal_voltage [v]"]
@@ -197,8 +268,8 @@ class EnergyStorageModel:
         self._attributes["cell_voltage_max [v]"] = parameters_value["Open-circuit voltage at 100% SOC [V]"]
         self._attributes["cell_voltage_min [v]"] = parameters_value["Open-circuit voltage at 0% SOC [V]"]
         
-        self.cell_temperature = parameters["ambient_temperature [°C]"]
-        self.temperature = self.cell_temperature
+        self._cell_temperature = parameters["ambient_temperature [°C]"]
+        self._temperature = self._cell_temperature
 
         self._attributes["cell_series_number [uint]"] = int(np.ceil(self._attributes["nominal_voltage [v]"]/ self._attributes["nominal_cell_voltage [V]"]))
         self._attributes["cell_parallel_number [uint]"] = int(np.ceil(self._attributes["nominal_capacity [Ah]"] / self._attributes["nominal_cell_capacity [Ah]"]))
@@ -218,35 +289,35 @@ class EnergyStorageModel:
         self._attributes["total_number_of_cells [uint]"] = self._attributes["cell_series_number [uint]"] * self._attributes["cell_parallel_number [uint]"]
         
         self.current = parameters["current [A]"]
-        self.cell_current  = self.current / self._attributes["cell_parallel_number [uint]"] 
+        self._cell_current  = self.current / self._attributes["cell_parallel_number [uint]"] 
         
         
         parameters_value["Ambient temperature [K]"] = parameters["ambient_temperature [°C]"] + 273.15
         parameters_value["Initial temperature [K]"] = parameters["ambient_temperature [°C]"] + 273.15
-        parameters_value['Current function [A]' ] = self.cell_current
+        parameters_value['Current function [A]' ] = self._cell_current
         
         sim = pybamm.Simulation(self.model, parameter_values=parameters_value, var_pts=self.var_pts)
-        sol = sim.solve([0, 1], initial_soc=1)
+        sol = sim.solve([0, 1], initial_soc=self._attributes["state_of_charge_init [%]"]/100)
         
-        self.cell_voltage = sol["Terminal voltage [V]"].entries[-1]
-        self.voltage = self.cell_voltage * self._attributes["cell_series_number [uint]"]
+        self._cell_voltage = sol["Terminal voltage [V]"].entries[-1]
+        self._voltage = self._cell_voltage * self._attributes["cell_series_number [uint]"]
         
       
-        self.cell_power = self.cell_current * self.cell_voltage # Power, in Watts (W)
-        self.power = self.cell_power * self._attributes["total_number_of_cells [uint]"] # Power, in Watts (W)
+        self._cell_power = self._cell_current * self._cell_voltage # Power, in Watts (W)
+        self.power = self._cell_power * self._attributes["total_number_of_cells [uint]"] # Power, in Watts (W)
         
         self._attributes["power_max [w]"] = parameters["power_max [w]"]
         self._attributes["cell_power_max [w]"] = round(self._attributes["power_max [w]"] / self._attributes["total_number_of_cells [uint]"], 2)
         
         
-        self.cell_state_of_power = self.cell_power / self._attributes["cell_power_max [w]"]  # Power/Power_max in percentage (%)
-        self.state_of_power = self.cell_state_of_power
+        self._cell_state_of_power = self._cell_power / self._attributes["cell_power_max [w]"]  # Power/Power_max in percentage (%)
+        self._state_of_power = self._cell_state_of_power
         
-        self.cell_remained_capacity = self._attributes["nominal_cell_capacity [Ah]"] * (self._attributes["state_of_health_init [%]"] / 100)  # Ah
-        self.remained_capacity = self.cell_remained_capacity * self._attributes["total_number_of_cells [uint]"]  # Ah
+        self._cell_remained_capacity= self._attributes["nominal_cell_capacity [Ah]"] * (self._attributes["state_of_health_init [%]"] / 100)  # Ah
+        self._remained_capacity = self._cell_remained_capacity* self._attributes["total_number_of_cells [uint]"]  # Ah
         
-        self.cell_stored_energy = self.cell_remained_capacity * self.cell_voltage * (self._attributes["state_of_charge_init [%]"] / 100)  # Wh
-        self.stored_energy = self.cell_stored_energy * self._attributes["total_number_of_cells [uint]"]  # Wh
+        self._cell_stored_energy = self._cell_remained_capacity* self._cell_voltage * (self._attributes["state_of_charge_init [%]"] / 100)  # Wh
+        self._stored_energy = self._cell_stored_energy * self._attributes["total_number_of_cells [uint]"]  # Wh
         
         self._attributes["discharge_current_max [A]"] = parameters["discharge_current_max [A]"]
         self._attributes["cell_discharge_current_max [A]"] = round(self._attributes["discharge_current_max [A]"] / self._attributes["cell_parallel_number [uint]"],2)
@@ -305,29 +376,29 @@ class EnergyStorageModel:
         """
         
         solution = solutions[-1]
-        self.state_of_charge = solution["State of Charge [%]"].entries[-1]
-        self.voltage = solution["Battery voltage [V]"].entries[-1]
-        self.cell_voltage = solution["Voltage [V]"].entries[-1]
-        self.cell_current = solution["Current [A]"].entries[-1]
-        self.current = self.cell_current * self._attributes["cell_parallel_number [uint]"]
-        self.cell_power = solution["Power [W]"].entries[-1]
-        self.power = self.cell_power * self._attributes["total_number_of_cells [uint]"]
-        self.temperature = self.cell_temperature = solution["Cell temperature [C]"].entries[-1]
-        self.state_of_charge = self.cell_state_of_charge = self.__update_state_of_charge(self, solution)
-        self.state_of_health = self.cell_state_of_health = self.__update_state_of_health(self, solution)
-        self.cell_remained_capacity = self.__update_remained_capacity(self, solution)
-        self.remained_capacity = self.cell_remained_capacity * self._attributes["total_number_of_cells [uint]"]
-        self.cell_stored_energy = self.__update_stored_energy(self, solution)
-        self.stored_energy = self.cell_stored_energy * self._attributes["total_number_of_cells [uint]"]
-        self.state_of_power = self.cell_state_of_power = self.__update_state_of_power(self, solution)
+        self._state_of_charge = solution["State of Charge [%]"].entries[-1]
+        self._voltage = solution["Battery voltage [V]"].entries[-1]
+        self._cell_voltage = solution["Voltage [V]"].entries[-1]
+        self._cell_current = solution["Current [A]"].entries[-1]
+        self.current = self._cell_current * self._attributes["cell_parallel_number [uint]"]
+        self._cell_power = solution["Power [W]"].entries[-1]
+        self.power = self._cell_power * self._attributes["total_number_of_cells [uint]"]
+        self._temperature = self._cell_temperature = solution["Cell temperature [C]"].entries[-1]
+        self._state_of_charge = self._cell_state_of_charge = self.__update_state_of_charge(self, solution)
+        self._state_of_health = self._cell_state_of_health = self.__update_state_of_health(self, solution)
+        self._cell_remained_capacity= self.__update_remained_capacity(self, solution)
+        self._remained_capacity = self._cell_remained_capacity* self._attributes["total_number_of_cells [uint]"]
+        self._cell_stored_energy = self.__update_stored_energy(self, solution)
+        self._stored_energy = self._cell_stored_energy * self._attributes["total_number_of_cells [uint]"]
+        self._state_of_power = self._cell_state_of_power = self.__update_state_of_power(self, solution)
  
            
     def __update_state_of_charge(self, solution) -> float:
-        soc_init = self.state_of_charge
+        soc_init = self._state_of_charge
         delta_depth_of_discharge = solution["Discharge capacity [A.h]"].entries[0] - solution["Discharge capacity [A.h]"].entries[-1]  # depth of discharge is a negative value 
         delta_soc = delta_depth_of_discharge / (self.cell_remained_capacity) * 100 # considering the state of health and capacity fading effect
         soc = soc_init + delta_soc
-        self.relative_state_of_charge = self.__calculate_relative_soc(self, soc)
+        self._relative_state_of_charge = self.__calculate_relative_soc(self, soc)
         return soc
 
 
@@ -348,7 +419,7 @@ class EnergyStorageModel:
         float: SOH value in percentage.
         """
         # method 1
-        soh_init = self.cell_state_of_health
+        soh_init = self._cell_state_of_health
         Qt_initial = self.cell_remained_capacity
 
 
@@ -374,13 +445,13 @@ class EnergyStorageModel:
 
     def __update_remained_capacity(self):
 
-        remianed_capacity = self._attributes["nominal_cell_capacity [Ah]"] * (self.cell_state_of_health/100) # Ah
+        remianed_capacity = self._attributes["nominal_cell_capacity [Ah]"] * (self._cell_state_of_health/100) # Ah
         return  remianed_capacity 
 
         
     def __update_stored_energy(self):
         
-        cell_stored_energy = self.cell_remained_capacity * self.cell_voltage * (self.cell_state_of_charge / 100)  # Wh
+        cell_stored_energy = self._cell_remained_capacity* self._cell_voltage * (self._cell_state_of_charge / 100)  # Wh
         return cell_stored_energy  
     
     
@@ -404,34 +475,34 @@ class EnergyStorageModel:
     #     self.number_of_cycles += 1
 
 
-    def __validate_operation(self):
-        """
-        Validates the dynamic parmateters range during operation against the specified constraints.
+    # def __validate_operation(self):
+    #     """
+    #     Validates the dynamic parmateters range during operation against the specified constraints.
         
-        Raises:
-            ValueError: If any of the constraints are violated.
-        """
+    #     Raises:
+    #         ValueError: If any of the constraints are violated.
+    #     """
         
-        if not (self.state_of_charge_min <= self.state_of_charge <= self.state_of_charge_max):
-            raise ValueError("State of Charge out of bounds")
-        if not (self.voltage_min <= self.voltage <= self.voltage_max):
-            raise ValueError("Voltage out of bounds")
-        if not ( 0<= self.temperature <= 60): 
-            raise ValueError("Overheating detected")
-        if not (self.power <= self.power_max):
-            raise ValueError("Power out of bounds")
-        if not (abs(self.current) <= self.current_max):
-            raise ValueError("Current out of bounds")
-        if not ( 0 <= self.state_of_power <= 1):
-            raise ValueError("State of Power out of bounds")
-        if not (0 <= self.stored_energy <= self.nominal_capacity * self.voltage_max):
-            raise(ValueError("Stored Energy out of bounds"))
-        if not (0 <= self.remained_capacity <= self.nominal_capacity):
-            raise(ValueError("Remained Capacity out of bounds"))
-        if not (0 <= self.state_of_health <= 100):
-            raise(ValueError("State of Health out of bounds"))
-        if (self.state_of_health <= self.end_of_life):
-            raise(ValueError("End of Life reached"))
+    #     if not (self.state_of_charge_min <= self._state_of_charge <= self.state_of_charge_max):
+    #         raise ValueError("State of Charge out of bounds")
+    #     if not (self._voltage_min <= self._voltage <= self._voltage_max):
+    #         raise ValueError("Voltage out of bounds")
+    #     if not ( 0<= self._temperature <= 60): 
+    #         raise ValueError("Overheating detected")
+    #     if not (self.power <= self.power_max):
+    #         raise ValueError("Power out of bounds")
+    #     if not (abs(self.current) <= self.current_max):
+    #         raise ValueError("Current out of bounds")
+    #     if not ( 0 <= self._state_of_power <= 1):
+    #         raise ValueError("State of Power out of bounds")
+    #     if not (0 <= self._stored_energy <= self.nominal_capacity * self._voltage_max):
+    #         raise(ValueError("Stored Energy out of bounds"))
+    #     if not (0 <= self._remained_capacity <= self.nominal_capacity):
+    #         raise(ValueError("Remained Capacity out of bounds"))
+    #     if not (0 <= self._state_of_health <= 100):
+    #         raise(ValueError("State of Health out of bounds"))
+    #     if (self._state_of_health <= self.end_of_life):
+    #         raise(ValueError("End of Life reached"))
 
      
     def simulate_and_update_state(self, current:float, ambient_temp:float, time_duration: int, previous_state: list) -> tuple[bool, list]:
@@ -446,25 +517,25 @@ class EnergyStorageModel:
             return False, previous_state
         
     
-    def update_constants_batch(self, new_constants: dict)-> None:
-        """
-        Updates the constants of the battery model.
+    # def update_constants_batch(self, new_constants: dict)-> None:
+    #     """
+    #     Updates the constants of the battery model.
         
-        Args:
-            new_constants (dict): A dictionary of new constants.
+    #     Args:
+    #         new_constants (dict): A dictionary of new constants.
             
-        Raises:
-            AttributeError: If the constant is not valid.
-            ValueError: If the value of the constant is invalid
-        """
-        for key, value in new_constants.items():
-            if key not in self._validation_rules:
-                raise AttributeError(f"{key} is not a valid constant in EnergyStorageModel")
-            if not self.validation_rules[key](value):
-                raise ValueError(f"Invalid value for {key}: {value}")
+    #     Raises:
+    #         AttributeError: If the constant is not valid.
+    #         ValueError: If the value of the constant is invalid
+    #     """
+    #     for key, value in new_constants.items():
+    #         if key not in self._validation_rules:
+    #             raise AttributeError(f"{key} is not a valid constant in EnergyStorageModel")
+    #         if not self.validation_rules[key](value):
+    #             raise ValueError(f"Invalid value for {key}: {value}")
         
-        for key, value in new_constants.items():
-            self._attributes[key] = value
+    #     for key, value in new_constants.items():
+    #         self._attributes[key] = value
             
     
     def reset_to_initial_state(self)-> None:
@@ -483,40 +554,40 @@ class EnergyStorageModel:
         """
         return {
             "timestamp": datetime.now(),
-            "state_of_charge": self.state_of_charge,
-            "state_of_health": self.state_of_health,
-            "voltage": self.voltage,
+            "state_of_charge": self._state_of_charge,
+            "state_of_health": self._state_of_health,
+            "voltage": self._voltage,
             "current": self.current,
             "power": self.power,
-            "state_of_power": self.state_of_power,
-            "stored_energy": self.stored_energy,
-            "temperature": self.temperature,
-            "remained_capacity": self.remained_capacity
+            "state_of_power": self._state_of_power,
+            "stored_energy": self._stored_energy,
+            "temperature": self._temperature,
+            "remained_capacity": self._remained_capacity
     }
     
     
-    def update_current(self, current:float) -> None:
-        """
-        Updates the current flowing into or out of the battery.
+    # def update_current(self, current:float) -> None:
+    #     """
+    #     Updates the current flowing into or out of the battery.
         
-        This method modifies the `current` attribute in place and does not return a value.
-        """
-        self.current = current
+    #     This method modifies the `current` attribute in place and does not return a value.
+    #     """
+    #     self.current = current
 
                
     def __repr__(self):
         return f"""Energy Storage Model Specifications:
-        - Cell Voltage: {self.cell_voltage} V
-        - Cell Stored Energy: {self.cell_stored_energy} Wh
+        - Cell Voltage: {self._cell_voltage} V
+        - Cell Stored Energy: {self._cell_stored_energy} Wh
         - Cell Nominal Capacity: {self._attributes["nominal_cell_capacity [Ah]"]} Ah
-        - Internal Resistance: {self._attributes["conctact_resistance [mΩ]"]} mΩ
+        - Cell Internal Resistance: {self._attributes["conctact_resistance [mΩ]"]} mΩ
         - Battery charge Efficiency: {self._attributes["charge_efficiency [%]"]} %
         - Battery discharge Efficiency: {self._attributes["discharge_efficiency [%]"]} %
         - Continuous Discharge Current: {self._attributes["discharge_current_max [A]"]} A
         - Continuous Charge Current: {self._attributes["charge_current_max [A]"]} A
         - End_of_life: {self._attributes["end_of_life_point [%]"]} %
-        - state_of_charge: {self.state_of_charge} %
-        - state_of_health: {self.state_of_health} %
+        - state_of_charge: {self._state_of_charge} %
+        - state_of_health: {self._state_of_health} %
         - state_of_charge Min: {self._attributes["state_of_charge_min [%]"]} %
         - state_of_charge Max: {self._attributes["state_of_charge_max [%]"]} %
         - Current Max: {self._attributes["discharge_current_max [A]"]} A
