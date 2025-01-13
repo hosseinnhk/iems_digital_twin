@@ -315,7 +315,7 @@ class EnergyStorageModel:
         self._state_of_power = self._cell_state_of_power
         
         self._cell_remained_capacity= self._attributes["nominal_cell_capacity [Ah]"] * (self._attributes["state_of_health_init [%]"] / 100)  # Ah
-        self._remained_capacity = self._cell_remained_capacity* self._attributes["total_number_of_cells [uint]"]  # Ah
+        self._remained_capacity = self._cell_remained_capacity * self._attributes["total_number_of_cells [uint]"]  # Ah
         
         self._cell_stored_energy = self._cell_remained_capacity* self._cell_voltage * (self._attributes["state_of_charge_init [%]"] / 100)  # Wh
         self._stored_energy = self._cell_stored_energy * self._attributes["total_number_of_cells [uint]"]  # Wh
@@ -351,18 +351,18 @@ class EnergyStorageModel:
     
     def simulate_and_update_state(self, current:float, ambient_temp:float, time_duration: int, previous_state=None) -> tuple[bool, list]:
 
-        try:
+        # try:
             current_state  = self.__run_simulation(current, ambient_temp, time_duration, states_list=previous_state)
             self.__update_params(current_state)
             # self.__validate_operation()
             return True, current_state
-        except ValueError as e:
-            # print(f"Validation failed: {e}")
-            return False, previous_state
+        # except ValueError as e:
+        #     # print(f"Validation failed: {e}")
+        #     return False, previous_state
 
 
     def __run_simulation(self, current:float, ambient_temp:float, time_duration: int, states_list = None) -> list:
-        self.parameter_values["Current function [A]"] = current
+        self.parameter_values["Current function [A]"] = current/self._attributes["cell_parallel_number [uint]"]
         self.parameter_values["Ambient temperature [K]"] = ambient_temp + 273.15
         sim = pybamm.Simulation(self.model, parameter_values=self.parameter_values, var_pts=self.var_pts)
         if states_list is None:
@@ -395,7 +395,7 @@ class EnergyStorageModel:
         
         solution = solutions[-1]
         # self._state_of_charge = solution["State of Charge [%]"].entries[-1]
-        self._voltage = solution["Battery voltage [V]"].entries[-1]
+        self._voltage = solution["Battery voltage [V]"].entries[-1] * self._attributes["cell_series_number [uint]"]
         self._cell_voltage = solution["Voltage [V]"].entries[-1]
         self._cell_current = solution["Current [A]"].entries[-1]
         self.current = self._cell_current * self._attributes["cell_parallel_number [uint]"]
@@ -405,7 +405,7 @@ class EnergyStorageModel:
         self._state_of_charge = self._cell_state_of_charge = self.__update_state_of_charge(solution)
         self._state_of_health = self._cell_state_of_health = self.__update_state_of_health(solution)
         self._cell_remained_capacity= self.__update_remained_capacity()
-        self._remained_capacity = self._cell_remained_capacity* self._attributes["total_number_of_cells [uint]"]
+        self._remained_capacity = self._cell_remained_capacity* self._attributes["cell_parallel_number [uint]"]
         self._cell_stored_energy = self.__update_stored_energy()
         self._stored_energy = self._cell_stored_energy * self._attributes["total_number_of_cells [uint]"]
         self._state_of_power = self._cell_state_of_power = self.__update_state_of_power()
@@ -554,25 +554,43 @@ class EnergyStorageModel:
         return True
 
     
-    def report_state(self) -> dict:
+    def report_state(self, initial_report=False) -> dict:
         """
         Records the current state of the battery.
-        
+
+        Args:
+            initial_report (bool): Whether to perform the initial report.
+
         Returns:
             dict: A dictionary of battery parameters with a timestamp.
         """
-        return {
-            "timestamp": datetime.now(),
-            "state_of_charge": self._state_of_charge,
-            "state_of_health": self._state_of_health,
-            "voltage": self._voltage,
-            "current": self.current,
-            "power": self.power,
-            "state_of_power": self._state_of_power,
-            "stored_energy": self._stored_energy,
-            "temperature": self._temperature,
-            "remained_capacity": self._remained_capacity
-    }
+        if initial_report:
+            states_list = []
+            sim = pybamm.Simulation(self.model, parameter_values=self.parameter_values, var_pts=self.var_pts)
+            sol = sim.solve([0, 1], initial_soc=self._attributes["state_of_charge_init [%]"] / 100)
+            states_list.append(sol)
+            self.__update_params(states_list)
+            
+        state_dict = {
+            # "timestamp": datetime.now(),
+            "state_of_charge": f"{self._state_of_charge:.2f}",
+            "state_of_health": f"{self._state_of_health:.2f}",
+            "cell_voltage": f"{self._cell_voltage:.2f}",
+            "voltage": f"{self._voltage:.2f}",
+            "current": f"{self.current:.2f}",
+            "power": f"{self.power:.2f}",
+            # "state_of_power": f"{self._state_of_power:.2f}",
+            "stored_energy": f"{self._stored_energy:.2f}",
+            "temperature": f"{self._temperature[0]:.2f}",
+            "remained_capacity": f"{self._remained_capacity:.2f}",
+            "cell remaining capacity": f"{self._cell_remained_capacity:.2f}",
+            "total number of cells": self._attributes["total_number_of_cells [uint]"],
+            "Number of series cells": self._attributes["cell_series_number [uint]"],
+            "Number of parallel cells": self._attributes["cell_parallel_number [uint]"],
+        }
+
+        return state_dict
+            
     
     
     # def update_current(self, current:float) -> None:

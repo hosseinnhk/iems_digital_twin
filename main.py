@@ -9,14 +9,14 @@ ess = es.EnergyStorageModel()
 parameters = {
     "cell_model": "DFN",
     "cell_chemistry": "Chen2020",
-    "time_resolution [s]": 3600,
+    "time_resolution [s]": 1,
     "nominal_voltage [v]": 345.0,
     "nominal_capacity [Ah]": 25.0,
     "ambient_temperature [°C]": 25.0,
     "current [A]": 0.0,
     "power_max [w]": 5000.0,
     "state_of_health_init [%]": 100.0,
-    "state_of_charge_init [%]": 50.0,
+    "state_of_charge_init [%]": 100.0,
     "nominal_cell_voltage [V]": 3.63,
     "discharge_current_max [A]": 20.0,
     "charge_current_max [A]": 10.0,
@@ -32,17 +32,19 @@ parameters = {
 
 ess.initialize_pybamm_model(parameters=parameters)
 
-print(ess.report_state())
+print(ess.report_state(initial_report=True))
+
 
 results = []
-for i in range(5):
+for i in range(20):
     if i==0:
-        result, ess.state = ess.simulate_and_update_state(current= 5, time_duration=3600, ambient_temp=30.0, previous_state=None)
+        result, ess.state = ess.simulate_and_update_state(current= 1, time_duration=3600, ambient_temp=30.0, previous_state=None)
     else:
-        result, ess.state = ess.simulate_and_update_state(current= 5, time_duration=3600, ambient_temp=30.0, previous_state=ess.state)
+        result, ess.state = ess.simulate_and_update_state(current= 4, time_duration=3600, ambient_temp=30.0, previous_state=ess.state)
     results.append(result)
     
 print(ess.report_state())
+print (results)
 # model = pybamm.lithium_ion.DFN(
 #     {
 #         "SEI": "solvent-diffusion limited",
