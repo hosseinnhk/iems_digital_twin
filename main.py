@@ -1,4 +1,6 @@
 from source.energy_storage import energy_storage as es
+import matplotlib.pyplot as plt
+
 
 ess = es.EnergyStorageModel()
 
@@ -16,7 +18,7 @@ parameters = {
     "current [A]": 0.0,
     "power_max [w]": 5000.0,
     "state_of_health_init [%]": 100.0,
-    "state_of_charge_init [%]": 100.0,
+    "state_of_charge_init [%]": 1.0,
     "nominal_cell_voltage [V]": 3.63,
     "discharge_current_max [A]": 20.0,
     "charge_current_max [A]": 10.0,
@@ -32,19 +34,36 @@ parameters = {
 
 ess.initialize_pybamm_model(parameters=parameters)
 
-print(ess.report_state(initial_report=True))
+# print(ess.report_state(initial_report=True))
 
 
 results = []
-for i in range(20):
-    if i==0:
-        result, ess.state = ess.simulate_and_update_state(current= 1, time_duration=3600, ambient_temp=30.0, previous_state=None)
-    else:
-        result, ess.state = ess.simulate_and_update_state(current= 4, time_duration=3600, ambient_temp=30.0, previous_state=ess.state)
-    results.append(result)
+for i in range(10):
+    _, ess.state = ess.simulate_and_update_state(current= 5, time_duration=(i+1)*200, ambient_temp=30.0, previous_state=ess.state)
+    # print(ess.report_state())
+    results.append(ess.report_state())
+for i in range(5):
+    _, ess.state = ess.simulate_and_update_state(current= -2, time_duration=(i+1)*100, ambient_temp=30.0, previous_state=ess.state)
+    # print(ess.report_state())
+    results.append(ess.report_state())
     
-print(ess.report_state())
-print (results)
+
+state_of_charge = [result["state_of_charge"] for result in results]
+state_of_charge = [float(i) for i in state_of_charge]
+# print(state_of_charge)
+time_steps = list(range(len(results)))
+
+# Plot state of charge over time
+plt.figure(figsize=(10, 6))
+plt.plot(time_steps, state_of_charge, label="State of Charge", marker='o')
+plt.xlabel("Time Steps")
+plt.ylabel("State of Charge (%)")
+plt.legend()
+plt.grid(True)
+plt.show()
+
+
+# print (results)
 # model = pybamm.lithium_ion.DFN(
 #     {
 #         "SEI": "solvent-diffusion limited",

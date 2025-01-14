@@ -46,6 +46,7 @@ class EnergyStorageModel:
         
         self.model = None
         self.parameter_values =  None
+        self.state = None
     
         # single cell dynamic variables
         self._cell_state_of_charge = 0.0  # State of Charge, as a percentage
@@ -297,11 +298,11 @@ class EnergyStorageModel:
         parameter_values["Initial temperature [K]"] = parameters["ambient_temperature [°C]"] + 273.15
         parameter_values['Current function [A]' ] = self._cell_current
         
-        sim = pybamm.Simulation(self.model, parameter_values=parameter_values, var_pts=self.var_pts)
-        sol = sim.solve([0, 1], initial_soc=self._attributes["state_of_charge_init [%]"]/100)
+        # sim = pybamm.Simulation(self.model, parameter_values=parameter_values, var_pts=self.var_pts)
+        # sol = sim.solve([0, 1], initial_soc=self._attributes["state_of_charge_init [%]"]/100)
         
-        self._cell_voltage = sol["Terminal voltage [V]"].entries[-1]
-        self._voltage = self._cell_voltage * self._attributes["cell_series_number [uint]"]
+        # self._cell_voltage = sol["Terminal voltage [V]"].entries[-1]
+        # self._voltage = self._cell_voltage * self._attributes["cell_series_number [uint]"]
         
       
         self._cell_power = self._cell_current * self._cell_voltage # Power, in Watts (W)
@@ -362,15 +363,20 @@ class EnergyStorageModel:
 
 
     def __run_simulation(self, current:float, ambient_temp:float, time_duration: int, states_list = None) -> list:
-        self.parameter_values["Current function [A]"] = current/self._attributes["cell_parallel_number [uint]"]
+        # self.parameter_values["Current function [A]"] = current/self._attributes["cell_parallel_number [uint]"]
         self.parameter_values["Ambient temperature [K]"] = ambient_temp + 273.15
-        sim = pybamm.Simulation(self.model, parameter_values=self.parameter_values, var_pts=self.var_pts)
-        if states_list is None:
-            states_list = []
-            solution  = sim.solve([0, time_duration])  
+        
+        if current < 0:
+            
+            self.experiment =pybamm.Experiment([f"Discharge at {(np.abs(current)/self._attributes["cell_parallel_number [uint]"])} A for {time_duration} seconds"])
+        elif current > 0:
+            self.experiment =pybamm.Experiment([f"Charge at {(current/self._attributes["cell_parallel_number [uint]"])} A for {time_duration} seconds"])
         else:
-            solution  = sim.solve([0, time_duration], starting_solution=states_list[-1])
-
+            self.experiment =pybamm.Experiment([f"Rest for {time_duration} seconds"]
+)
+        sim = pybamm.Simulation(self.model, experiment= self.experiment, parameter_values=self.parameter_values, var_pts=self.var_pts)
+        states_list = states_list or []
+        solution = sim.solve(initial_soc= (self._attributes["state_of_charge_init [%]"])/100) if not states_list else sim.solve(starting_solution=states_list[-1])
         states_list.append(solution)
         # results = {
         #     "time": solution["Time [s]"].entries,
@@ -394,7 +400,6 @@ class EnergyStorageModel:
         """
         
         solution = solutions[-1]
-        # self._state_of_charge = solution["State of Charge [%]"].entries[-1]
         self._voltage = solution["Battery voltage [V]"].entries[-1] * self._attributes["cell_series_number [uint]"]
         self._cell_voltage = solution["Voltage [V]"].entries[-1]
         self._cell_current = solution["Current [A]"].entries[-1]
@@ -405,17 +410,23 @@ class EnergyStorageModel:
         self._state_of_charge = self._cell_state_of_charge = self.__update_state_of_charge(solution)
         self._state_of_health = self._cell_state_of_health = self.__update_state_of_health(solution)
         self._cell_remained_capacity= self.__update_remained_capacity()
-        self._remained_capacity = self._cell_remained_capacity* self._attributes["cell_parallel_number [uint]"]
+        self._remained_capacity = self._cell_remained_capacity * self._attributes["cell_parallel_number [uint]"]
         self._cell_stored_energy = self.__update_stored_energy()
         self._stored_energy = self._cell_stored_energy * self._attributes["total_number_of_cells [uint]"]
         self._state_of_power = self._cell_state_of_power = self.__update_state_of_power()
  
+ 
+    def __update_remained_capacity(self):
+        remianed_capacity = self._attributes["nominal_cell_capacity [Ah]"] * (self._cell_state_of_health/100) # Ah
+        return  remianed_capacity 
            
     def __update_state_of_charge(self, solution) -> float:
         soc_init = self._state_of_charge
+        # print(f" size of soc: {len(solution['Discharge capacity [A.h]'].entries)}")
+        # print(f"zeor: {solution["Discharge capacity [A.h]"].entries[0]}, minus one {solution["Discharge capacity [A.h]"].entries[-1]}")
         delta_depth_of_discharge = solution["Discharge capacity [A.h]"].entries[0] - solution["Discharge capacity [A.h]"].entries[-1]  # depth of discharge is a negative value 
-        delta_soc = delta_depth_of_discharge / (self.cell_remained_capacity) * 100 # considering the state of health and capacity fading effect
-        soc = soc_init + delta_soc
+        soc = delta_depth_of_discharge / (self._cell_remained_capacity) * 100 # considering the state of health and capacity fading effect
+        # soc = soc_init + delta_soc
         self._relative_state_of_charge = self.__calculate_relative_soc(soc)
         return soc
 
@@ -461,10 +472,7 @@ class EnergyStorageModel:
         return soh
  
 
-    def __update_remained_capacity(self):
 
-        remianed_capacity = self._attributes["nominal_cell_capacity [Ah]"] * (self._cell_state_of_health/100) # Ah
-        return  remianed_capacity 
 
         
     def __update_stored_energy(self):
@@ -574,19 +582,20 @@ class EnergyStorageModel:
         state_dict = {
             # "timestamp": datetime.now(),
             "state_of_charge": f"{self._state_of_charge:.2f}",
-            "state_of_health": f"{self._state_of_health:.2f}",
+            # "state_of_health": f"{self._state_of_health:.2f}",
             "cell_voltage": f"{self._cell_voltage:.2f}",
             "voltage": f"{self._voltage:.2f}",
+            "cell_current": f"{self._cell_current:.2f}",
             "current": f"{self.current:.2f}",
-            "power": f"{self.power:.2f}",
+            # "power": f"{self.power:.2f}",
             # "state_of_power": f"{self._state_of_power:.2f}",
-            "stored_energy": f"{self._stored_energy:.2f}",
-            "temperature": f"{self._temperature[0]:.2f}",
-            "remained_capacity": f"{self._remained_capacity:.2f}",
-            "cell remaining capacity": f"{self._cell_remained_capacity:.2f}",
-            "total number of cells": self._attributes["total_number_of_cells [uint]"],
-            "Number of series cells": self._attributes["cell_series_number [uint]"],
-            "Number of parallel cells": self._attributes["cell_parallel_number [uint]"],
+            # "stored_energy": f"{self._stored_energy:.2f}",
+            # "temperature": f"{self._temperature[0]:.2f}",
+            # "remained_capacity": f"{self._remained_capacity:.2f}",
+            # "cell remaining capacity": f"{self._cell_remained_capacity:.2f}",
+            # "total number of cells": self._attributes["total_number_of_cells [uint]"],
+            # "Number of series cells": self._attributes["cell_series_number [uint]"],
+            # "Number of parallel cells": self._attributes["cell_parallel_number [uint]"],
         }
 
         return state_dict
