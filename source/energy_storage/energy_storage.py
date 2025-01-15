@@ -231,9 +231,7 @@ class EnergyStorageModel:
             "SEI on cracks": "true",
             "loss of active material": "stress-driven",
             "calculate discharge energy": "true",  # for compatibility with older PyBaMM versions
-            # "current collector": "potential pair",
             "cell geometry": "pouch",
-            # "dimensionality": 2,
             "thermal": "lumped",
             "contact resistance": "true",
         }
@@ -251,17 +249,10 @@ class EnergyStorageModel:
         }       
         self.__validate_input_parameters(parameters)
         
-        
         A = self.parameter_values["Electrode width [m]"] * self.parameter_values["Electrode height [m]"]
         self.parameter_values["Cell cooling surface area [m2]"] = 2 * A
         self.parameter_values["Total heat transfer coefficient [W.m-2.K-1]"] = 5
-        # self.parameter_values["Negative current collector surface heat transfer coefficient [W.m-2.K-1]"] = 5
-        # self.parameter_values["Positive current collector surface heat transfer coefficient [W.m-2.K-1]"] = 5
-        # self.parameter_values["Negative tab heat transfer coefficient [W.m-2.K-1]"] = 0
-        # self.parameter_values["Positive tab heat transfer coefficient [W.m-2.K-1]"] = 0
-        # self.parameter_values["Edge heat transfer coefficient [W.m-2.K-1]"] = 0
- 
- 
+         
         self._attributes["time_resolution [s]"] = parameters["time_resolution [s]"]
         self._attributes["state_of_charge_init [%]"] = parameters["state_of_charge_init [%]"]
         self._attributes["state_of_health_init [%]"] = parameters["state_of_health_init [%]"]
@@ -340,11 +331,11 @@ class EnergyStorageModel:
         
         self.parameter_values = parameter_values
         
-        for key in self._validation_rules:
-            value = self._attributes[key]
-            if not (self.__validate_parameter(key, value)):
-                raise ValueError(f"Invalid value for {key}: {value}")
-        logging.info("All parameters are intialized and validated")
+        # for key in self._validation_rules:
+        #     value = self._attributes[key]
+        #     if not (self.__validate_parameter(key, value)):
+        #         raise ValueError(f"Invalid value for {key}: {value}")
+        # logging.info("All parameters are intialized and validated")
     
     def run_model(self, current:float, ambient_temp:float, time_duration: int, previous_state=None) -> tuple[bool, list]:
 
