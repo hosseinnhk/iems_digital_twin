@@ -342,7 +342,8 @@ class EnergyStorageModel:
         # try:
             current_state  = self.__run_simulation(current, ambient_temp, time_duration, state=previous_state)
             self.__update_params(current_state)
-            current_state = current_state.cycles[-1]
+            # current_state = current_state.cycles[-1]
+            current_state = current_state
             # self.__validate_operation()
             return True, current_state
         # except ValueError as e:
@@ -350,7 +351,7 @@ class EnergyStorageModel:
         #     return False, previous_state
 
     def __run_simulation(self, current:float, ambient_temp:float, time_duration: int, state = None) -> list:
-        # self.parameter_values["Current function [A]"] = current/self._attributes["cell_parallel_number [uint]"]
+        self.parameter_values["Current function [A]"] = current/self._attributes["cell_parallel_number [uint]"]
         self.parameter_values["Ambient temperature [K]"] = ambient_temp + 273.15
         
         if current < 0:
@@ -374,7 +375,7 @@ class EnergyStorageModel:
         self._cell_power = solution["Power [W]"].data[-1]
         self.power = self._cell_power * self._attributes["total_number_of_cells [uint]"]
         # self._temperature = self._cell_temperature = solution["Cell temperature [C]"].data[-1]
-        self._temperature = self._cell_temperature = solution["X-averaged cell temperature [K]" ].data[-1] - 273.15
+        # self._temperature = self._cell_temperature = solution["X-averaged cell temperature [K]" ].data[-1] - 273.15
         self._state_of_charge = self._cell_state_of_charge = self.__update_state_of_charge(solution)
         self._state_of_health = self._cell_state_of_health = self.__update_state_of_health(solution)
         self._cell_remained_capacity= self.__update_remained_capacity()
