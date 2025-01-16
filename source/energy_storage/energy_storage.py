@@ -1,8 +1,11 @@
 import numpy as np
+import matplotlib.pyplot as plt
 from datetime import datetime
 from typing import Any
 import pybamm
 import logging
+import random
+import os
 
 class EnergyStorageModel:
     
@@ -339,16 +342,16 @@ class EnergyStorageModel:
     
     def run_model(self, current:float, ambient_temp:float, time_duration: int, previous_state=None) -> tuple[bool, list]:
 
-        # try:
+        try:
             current_state  = self.__run_simulation(current, ambient_temp, time_duration, state=previous_state)
             self.__update_params(current_state)
-            # current_state = current_state.cycles[-1]
-            current_state = current_state
+            current_state = current_state.cycles[-1]
+            # current_state = current_state
             # self.__validate_operation()
-            return True, current_state
-        # except ValueError as e:
-        #     # print(f"Validation failed: {e}")
-        #     return False, previous_state
+            return False, current_state
+        except Exception as e:
+            print(f"Battery storage simulation failed")
+            return True, previous_state
 
     def __run_simulation(self, current:float, ambient_temp:float, time_duration: int, state = None) -> list:
         self.parameter_values["Current function [A]"] = current/self._attributes["cell_parallel_number [uint]"]
@@ -375,7 +378,7 @@ class EnergyStorageModel:
         self._cell_power = solution["Power [W]"].data[-1]
         self.power = self._cell_power * self._attributes["total_number_of_cells [uint]"]
         # self._temperature = self._cell_temperature = solution["Cell temperature [C]"].data[-1]
-        # self._temperature = self._cell_temperature = solution["X-averaged cell temperature [K]" ].data[-1] - 273.15
+        self._temperature = self._cell_temperature = solution["X-averaged cell temperature [K]" ].data[-1] - 273.15
         self._state_of_charge = self._cell_state_of_charge = self.__update_state_of_charge(solution)
         self._state_of_health = self._cell_state_of_health = self.__update_state_of_health(solution)
         self._cell_remained_capacity= self.__update_remained_capacity()
@@ -542,7 +545,80 @@ class EnergyStorageModel:
             # "Number of parallel cells": (self._attributes["cell_parallel_number [uint]"], "cells"),
             }
         return state_dict
-                          
+    
+    def dynamic_plot(sellf, state):
+        plt.style.use("seaborn-v0_8-deep")
+        pybamm.settings.max_words_in_line = 3
+        pybamm.dynamic_plot(state)
+          
+    def plot_results(self, results, plot_params: dict, save_plot=False) -> None:
+        """
+        Generate plots based on the given plot parameters.
+
+        Args:
+            results (list): A list of dictionaries containing data for plotting.
+            plot_parameters (list): A list of parameter names to plot.
+                Example:
+                ["state_of_charge", "state_of_health", "current", "temperature"]
+        """
+        x_steps = list(range(len(results)))
+
+        data = {key: [result[key][0] for result in results] for key in plot_params}
+
+        num_plots = len(plot_params)
+
+        if num_plots > 1:
+            fig, axs = plt.subplots(num_plots, 1, figsize=(6, 3 * num_plots))
+            axs = axs if isinstance(axs, (list, np.ndarray)) else [axs]
+        else:
+            fig, axs = plt.subplots(figsize=(6, 4))
+            axs = [axs]
+
+        fig.suptitle("Battery Parameters Over Time", fontsize=12)
+
+        for ax, key in zip(axs, plot_params):
+            random_color = "#" + "".join([random.choice("0123456789ABCDEF") for _ in range(6)])
+            label = key.replace("_", " ").title()
+            ax.plot(x_steps, data[key], label=label, color=random_color)
+            # ax.set_title(label)
+            ax.set_xlabel("Time Steps")
+            unit = self._select_unit(label)
+            label = f"{label} ({unit})"
+            ax.set_ylabel(label)
+            ax.grid(True)
+            ax.legend()
+
+        if save_plot:
+            output_dir = "figures"
+            if not os.path.exists(output_dir):
+                os.makedirs(output_dir)
+            timestamp = datetime.now().strftime("%m%d_%H%M%S")
+            filename = f"{output_dir}/plot_{'_'.join(plot_params)}_{timestamp}.png"
+            plt.savefig(filename)
+            print(f"Figure saved as {filename}")
+
+        plt.tight_layout()
+        plt.show()      
+
+    def _select_unit(self, label: str) -> str:            
+        if "Voltage" in label:
+            return "V"
+        elif "Current" in label:
+            return "A"
+        elif "Power" in label:
+            return "W"
+        elif "Energy" in label:
+            return "Wh"
+        elif "capacity" in label:
+            return "Ah"
+        elif "Temperature" in label:
+            return "°C"
+        elif "State" in label:
+            return "%"         
+        else:
+            return ""
+        
+         
     def __repr__(self):
         return f"""Energy Storage Model Specifications:
         - Cell Voltage: {self._cell_voltage} V
