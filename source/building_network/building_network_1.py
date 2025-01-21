@@ -8,60 +8,161 @@ class BuildingElectricityNetwork:
         self.name = name
         self.grid_voltage = grid_voltage
         self.dc_voltage = dc_voltage
-        self.pv_output = 0.0
+        self.pv_output_power = 0.0
+        self.ess_exchange_power = 0.0
         self.dc_demand  = 0.0
         self.ac_demand = 0.0
         self.pv_dc_bus_effieciency = 0.98
         self.ess_dc_bus_efficiency = 0.98
-        self.dc_bus_ac_bus_efficiency = 0.95
-        self.network = pp.create_empty_network()  
+        self.ac_dc_converter_efficiency = 0.95
+        self.dc_ac_converter_efficiency = 0.95
+        self.ac_dc_converter_rated_power = 0.0
+        self.battery_mode = "discharging"
+        self.ess_initial_soc = 0.0
+        self.ess_capacity = 0.0
+
+        
         self._establish_network() 
-        self._add_dc_pv_converter()
+        self._add_dc_pv_converter_and_pv()
+        self._add_dc_ess_converter_and_storage()
         self._add_bi_ac_dc_converter()
-        self._add_dc_ess_converter()
-        self._add_dc_dc_socket()
+        
+        # self._add_dc_dc_socket()
+        # self._add_ev_charger()
+        # self.run_simulation()
         
 
     def _establish_network(self):
         
-        self.grid_bus = pp.create_bus(self.network, vn_kv=self.grid_voltage/1000, name="grid connection bus")
+        self.network = pp.create_empty_network() 
+        self.ext_grid_1 = pp.create_ext_grid(self.network, bus=self.grid_bus_1, vm_pu=1.0, max_p_mw= 0.005, min_p_mw=-0.005, name="grid connection 1")
+        self.ext_grid_2 = pp.create_ext_grid(self.network, bus=self.grid_bus_2, vm_pu=1.0, max_p_mw= 0.005, min_p_mw=-0.005, name="grid connection 2")
+        self.ext_grid_3 = pp.create_ext_grid(self.network, bus=self.grid_bus_3, vm_pu=1.0, max_p_mw= 0.005, min_p_mw=-0.005, name="grid connection 3")
+        
+        self.grid_bus_1 = pp.create_ext_grid(self.network, vn_kv=self.grid_voltage/1000, name="grid connection bus 1")
+        self.grid_bus_2 = pp.create_ext_grid(self.network, vn_kv=self.grid_voltage/1000, name="grid connection bus 2")
+        self.grid_bus_3 = pp.create_ext_grid(self.network, vn_kv=self.grid_voltage/1000, name="grid connection bus 3")
+        
         self.ac_bus_1 = pp.create_bus(self.network, vn_kv=self.grid_voltage/1000, name="ac bus 1")
         self.ac_bus_2 = pp.create_bus(self.network, vn_kv=self.grid_voltage/1000, name="ac bus 2")
         self.ac_bus_3 = pp.create_bus(self.network, vn_kv=self.grid_voltage/1000, name="ac bus 3")
-        self.ev_bus_1 = pp.create_bus(self.network, vn_kv=self.grid_voltage/1000, name="ev bus 1")
-        self.ev_bus_2 = pp.create_bus(self.network, vn_kv=self.grid_voltage/1000, name="ev bus 2")
-        self.ev_bus_3 = pp.create_bus(self.network, vn_kv=self.grid_voltage/1000, name="ev bus 3")
         
+        # self.ev_bus_1 = pp.create_bus(self.network, vn_kv=self.grid_voltage/1000, name="ev bus 1")
+        # self.ev_bus_2 = pp.create_bus(self.network, vn_kv=self.grid_voltage/1000, name="ev bus 2")
+        # self.ev_bus_3 = pp.create_bus(self.network, vn_kv=self.grid_voltage/1000, name="ev bus 3")
+        self.ev_bus = pp.create_bus(self.network, vn_kv=self.grid_voltage/1000, name="ev bus")
+        
+        self.ac_bus_renewable = pp.create_bus(self.network, vn_kv=self.grid_voltage/1000, name="ac bus renewable")
+        self.dc_bus_load = pp.create_bus(self.network, vn_kv=self.dc_voltage/1000, name="dc bus for dc load")
         self.dc_bus_main = pp.create_bus(self.network, vn_kv=0.4, name="dc bus")
         self.dc_bus_pv = pp.create_bus(self.network, vn_kv=0.4, name="pv dc bus")
         self.dc_bus_ess = pp.create_bus(self.network, vn_kv=0.4, name="ess dc bus")
 
-        self.ext_grid_1 = pp.create_ext_grid(self.network, bus=self.ac_bus_1, vm_pu=1.0)
-        self.ext_grid_2 = pp.create_ext_grid(self.network, bus=self.ac_bus_2, vm_pu=1.0)
-        self.ext_grid_3 = pp.create_ext_grid(self.network, bus=self.ac_bus_3, vm_pu=1.0)
+        self.ac_switch_1 = pp.create_switch(self.network, self.grid_bus_1, element=self.ac_bus_1, et="b", closed=True, name="grid to building ac bus 1 relay")
+        self.ac_switch_2 = pp.create_switch(self.network, self.grid_bus_2, element=self.ac_bus_2, et="b", closed=True, name="grid to building ac bus 2 relay")
+        self.ac_switch_3 = pp.create_switch(self.network, self.grid_bus_3, element=self.ac_bus_3, et="b", closed=True, name="grid to building ac bus 3 relay")
         
-        self.switch_1 = pp.create_switch(self.network, self.ac_bus_1, self.dc_bus_main, element=0, closed=True, name="Switch 1")
-        self.switch_2 = pp.create_switch(self.network, self.ac_bus_2, self.dc_bus_main, element=0, closed=True, name="Switch 2")
-        self.switch_3 = pp.create_switch(self.network, self.ac_bus_3, self.dc_bus_main, element=0, closed=True, name="Switch 3")
+        self.dc_switch_1 = pp.create_switch(self.network, self.ac_bus_1, element=self.ac_bus_renewable, et="b", closed=True, name="renewable bus relay 1")
+        self.dc_switch_2 = pp.create_switch(self.network, self.ac_bus_2, element=self.ac_bus_renewable, et="b", closed=True, name="renewable bus relay 2")
+        self.dc_switch_3 = pp.create_switch(self.network, self.ac_bus_3, element=self.ac_bus_renewable, et="b", closed=True, name="renewable bus relay 3")
         
-        self.ev_switch_1 = pp.create_switch(self.network, self.ac_bus_1, self.ev_bus_1, element=0, closed=True, name="EV Switch 1")
-        self.ev_switch_2 = pp.create_switch(self.network, self.ac_bus_2, self.ev_bus_2, element=0, closed=True, name="EV Switch 2")
-        self.ev_switch_3 = pp.create_switch(self.network, self.ac_bus_3, self.ev_bus_3, element=0, closed=True, name="EV Switch 3")
+        self.ev_switch_1 = pp.create_switch(self.network, self.ac_bus_1, element=self.ev_bus, et="b", closed=False, name="EV charger relay 1")
+        self.ev_switch_2 = pp.create_switch(self.network, self.ac_bus_2, element=self.ev_bus, et="b", closed=False, name="EV charger relay 2")
+        self.ev_switch_3 = pp.create_switch(self.network, self.ac_bus_3, element=self.ev_bus, et="b", closed=False, name="EV charger relay 3")
 
 
-    def _add_dc_pv_converter(self):
-        dc_to_dc_loss = (1 - self.pv_dc_bus_effieciency) * self.pv_output  # loss in kW
+    def _add_dc_pv_converter_and_pv(self):
+        dc_to_dc_loss=(1-self.pv_dc_bus_effieciency)*self.pv_output_power  # loss in kW
         
-        pp.create_load(self.network, bus=self.dc_bus_pv, p_mw=dc_to_dc_loss, name="mppt to dc/dc lost")  # loss for mppt converter
+        self.pv_conv_loss=pp.create_load(self.network,  
+            bus=self.dc_bus_pv, 
+            p_mw=(dc_to_dc_loss/1000), 
+            name="mppt to dc/dc loss"
+        )  # loss for mppt converter
 
-        dc_power = self.pv_output * self.pv_dc_bus_effieciency  # power injected into pv dc bus
-        pp.create_sgen(self.network, bus=self.dc_bus_pv, p_mw=dc_power, name="pv to main dc bus injection", type="DC")
+        dc_power = self.pv_output_power * self.pv_dc_bus_effieciency  # power injected into pv dc bus
+        self.pv_setup = pp.create_sgen(self.network, 
+            bus = self.dc_bus_pv, 
+            p_mw = (dc_power/1000), 
+            name = "pv to main dc bus injection", 
+            type = "DC"
+        )
+        
+    def _add_dc_ess_converter_and_storage(self):
+        dc_to_dc_loss = (1 - self.ess_dc_bus_efficiency) * self.ess_exchange_power  # loss in kW
+        
+        self.ess_cov_loss = pp.create_load(self.network, bus=self.dc_bus_ess, p_mw=(dc_to_dc_loss/1000), name="ess dc/dc converter loss")  # loss for mppt converter
+
+        ess_power = self.ess_exchange_power * self.ess_dc_bus_efficiency  
+    
+        self.battery_storage = pp.create_storage(
+            self.network,
+            bus = self.dc_bus_ess, 
+            p_mw = ess_power / 1000,  # Power in MW
+            max_e_mwh = self.ess_capacity / 1000,  # Energy capacity in MWh
+            efficiency = 1, 
+            soc_initial = self.ess_initial_soc,  
+            name="Battery Storage"
+        )
     
     def _add_bi_ac_dc_converter(self):
         dc_to_ac_loss = (1 - self.dc_bus_ac_bus_efficiency) * self.ac_demand   
         pp.create_load(self.network, bus=self.dc_bus_main, p_mw=dc_to_ac_loss, name="ac/dc to main dc bus lost")  # loss for ac/dc converter
         ac_power  = self.ac_demand * self.dc_bus_ac_bus_efficiency  
         
+    def _add_bi_ac_dc_converter(self):
+        
+        ac_to_dc_efficiency = self.ac_dc_converter_efficiency  # Efficiency for AC to DC conversion
+        dc_to_ac_efficiency = self.dc_ac_converter_efficiency  # Efficiency for DC to AC conversion
+
+        rated_power = self.ac_dc_converter_rated_power  # Maximum power in kW
+
+        ac_to_dc_loss = (1 - ac_to_dc_efficiency) * rated_power  # Loss in kW
+
+        dc_to_ac_loss = (1 - dc_to_ac_efficiency) * rated_power  # Loss in kW
+
+        self.ac_dc_conv_loss = pp.create_load(
+            self.network,
+            bus=self.dc_bus_main,  # Connect to the DC bus
+            p_mw=(ac_to_dc_loss / 1000),  # Convert kW to MW
+            name="AC to DC Conversion Loss"
+        )
+
+        self.dc_ac_conv_loss = pp.create_load(
+            self.network,
+            bus=self.ac_bus_renewable,  # Connect to the AC bus
+            p_mw=(dc_to_ac_loss / 1000),  # Convert kW to MW
+            name="DC to AC Conversion Loss"
+        )
+
+        # Model the AC to DC conversion as a static generator when charging (AC to DC)
+        self.ac_to_dc_converter = pp.create_sgen(
+            self.network,
+            bus=self.dc_bus_main,  # Connect to the DC bus
+            p_mw=(rated_power * ac_to_dc_efficiency / 1000),  # Power flow from AC to DC
+            name="AC to DC Converter",
+            type="AC"
+        )
+
+        # Model the DC to AC conversion as a static generator when discharging (DC to AC)
+        self.dc_to_ac_converter = pp.create_sgen(
+            self.network,
+            bus=self.ac_bus_renewable,  # Connect to the AC bus
+            p_mw=(rated_power * dc_to_ac_efficiency / 1000),  # Power flow from DC to AC
+            name="DC to AC Converter",
+            type="DC"
+        )
+
+        # Optionally, add logic to switch between charging and discharging mode
+        # This could be done using a control system, based on the system’s state
+        if self.ac_dc_mode == "charging":
+            # Switch to charging mode (AC to DC)
+            pp.set_sgen(self.network, self.ac_to_dc_converter, p_mw=(rated_power * ac_to_dc_efficiency / 1000))
+            pp.set_sgen(self.network, self.dc_to_ac_converter, p_mw=0)  # No power flow in DC to AC direction
+        elif self.ac_dc_mode == "discharging":
+            # Switch to discharging mode (DC to AC)
+            pp.set_sgen(self.network, self.ac_to_dc_converter, p_mw=0)  # No power flow in AC to DC direction
+            pp.set_sgen(self.network, self.dc_to_ac_converter, p_mw=(rated_power * dc_to_ac_efficiency / 1000))        
         
         
     def add_components(self, device_type, **kwargs):
@@ -80,6 +181,19 @@ class BuildingElectricityNetwork:
     
     def simulate(self):
         """Run the power flow simulation."""
+        if self.battery_mode == "charging":
+            pp.set_storage(
+                self.network, 
+                self.battery_storage, 
+                p_mw=self.battery_power * self.battery_dc_bus_efficiency / 1000  # Charging power
+            )
+        elif self.battery_mode == "discharging":
+            pp.set_storage(
+                self.network, 
+                self.battery_storage, 
+                p_mw=-self.battery_power * self.battery_dc_bus_efficiency / 1000  # Discharging power
+            )
+
         pp.runpp(self.network)
         
     def get_results(self):
