@@ -105,57 +105,53 @@ class BuildingElectricityNetwork:
 
         # ess_power = self.ess_exchange_power * self.ess_dc_bus_efficiency  
     
-        self.battery_storage = pp.create_storage(
-            self.network,
+        self.battery_storage = pp.create_storage(self.network,
             bus = self.dc_bus_ess, 
             p_mw = 0.0,  # Power in MW
             max_e_mwh = 0.0, # The maximum energy content of the storage (maximum charge level)
             min_e_mwh = 0.0, # The minimum energy content of the storage (minimum charge level)
             max_p_mw = 0.0,  # The maximum power input/output of the storage
-            min_p_mw = 0.0,  # The minimum power input/output of the storage
+            min_p_mw = 0.0,  # The minimum power input/output of the storage (chargining)
+            max_q_mvar = 0.0,  # The maximum reactive power input/output of the storage
+            min_q_mvar = 0.0,  # The minimum reactive power input/output of the storage
             soc_percent = 0.0,  # The state of charge (SOC) of the storage
-            efficiency = 1, 
-            soc_initial = self.ess_initial_soc,  
-            name="Battery Storage"
-        )
+            controllable = True,  # Whether the storage is controllable
+            name = "Battery Storage",
+            type="storage"
+            )
     
-    def _add_bi_ac_dc_converter(self):
-        dc_to_ac_loss = (1 - self.dc_bus_ac_bus_efficiency) * self.ac_demand   
-        pp.create_load(self.network, bus=self.dc_bus_main, p_mw=dc_to_ac_loss, name="ac/dc to main dc bus lost")  # loss for ac/dc converter
-        ac_power  = self.ac_demand * self.dc_bus_ac_bus_efficiency  
         
     def _add_bi_ac_dc_converter(self):
         
-        ac_to_dc_efficiency = self.ac_dc_converter_efficiency  # Efficiency for AC to DC conversion
-        dc_to_ac_efficiency = self.dc_ac_converter_efficiency  # Efficiency for DC to AC conversion
-
-        rated_power = self.ac_dc_converter__ratedpower 
-
-        ac_to_dc_loss = (1 - ac_to_dc_efficiency) * rated_power  # Loss in kW
-
-        dc_to_ac_loss = (1 - dc_to_ac_efficiency) * rated_power  # Loss in kW
-
+        self.intelink_bus = pp.create_bus(self.network, vn_kv=self.grid_voltage/1000, name="intelink bus")
+        
         self.ac_dc_conv_loss = pp.create_load(
             self.network,
-            bus=self.dc_bus_main,  # Connect to the DC bus
-            p_mw=(ac_to_dc_loss / 1000),  # Convert kW to MW
-            name="AC to DC Conversion Loss"
+            bus=self.intelink_bus,  
+            p_mw = 0.0, 
+            name = "ac to dc conversion loss"
         )
 
         self.dc_ac_conv_loss = pp.create_load(
             self.network,
-            bus=self.ac_bus_renewable,  # Connect to the AC bus
-            p_mw=(dc_to_ac_loss / 1000),  # Convert kW to MW
-            name="DC to AC Conversion Loss"
+            bus = self.ac_bus_renewable,  
+            p_mw = 0.0,  
+            name = "dc to ac conversion loss"
         )
 
         # Model the AC to DC conversion as a static generator when charging (AC to DC)
-        self.ac_to_dc_converter = pp.create_sgen(
-            self.network,
-            bus=self.dc_bus_main,  # Connect to the DC bus
-            p_mw=(rated_power * ac_to_dc_efficiency / 1000),  # Power flow from AC to DC
-            name="AC to DC Converter",
-            type="AC"
+        self.ac_to_dc_converter = pp.create_sgen(self.network,
+            bus = self.dc_bus_main,  
+            p_mw = 0.0,  # Power flow from AC to DC
+            q_mvar = 0.0,
+            sn_mva = 0.0, # Nominal power of the generator
+            max_p_mw = 0.0,  # The maximum power input/output of the storage
+            min_p_mw = 0.0,  # The minimum power input/output of the storage (chargining)
+            max_q_mvar = 0.0,  # The maximum reactive power input/output of the storage
+            min_q_mvar = 0.0,  # The minimum reactive power input/output of the storage
+            controllable = True,  # Whether the storage is controllable
+            name = "ac to dc converter",
+            type = "AC"
         )
 
         # Model the DC to AC conversion as a static generator when discharging (DC to AC)
@@ -166,18 +162,6 @@ class BuildingElectricityNetwork:
             name="DC to AC Converter",
             type="DC"
         )
-
-        # Optionally, add logic to switch between charging and discharging mode
-        # This could be done using a control system, based on the system’s state
-        if self.ac_dc_mode == "charging":
-            # Switch to charging mode (AC to DC)
-            pp.set_sgen(self.network, self.ac_to_dc_converter, p_mw=(rated_power * ac_to_dc_efficiency / 1000))
-            pp.set_sgen(self.network, self.dc_to_ac_converter, p_mw=0)  # No power flow in DC to AC direction
-        elif self.ac_dc_mode == "discharging":
-            # Switch to discharging mode (DC to AC)
-            pp.set_sgen(self.network, self.ac_to_dc_converter, p_mw=0)  # No power flow in AC to DC direction
-            pp.set_sgen(self.network, self.dc_to_ac_converter, p_mw=(rated_power * dc_to_ac_efficiency / 1000))        
-        
         
     def add_load(self, device_type, **kwargs):
         
@@ -191,31 +175,10 @@ class BuildingElectricityNetwork:
         elif device_type == 'ev_charger':
             pp.create_load(self.network, bus=self.ev_bus, p_kw=kwargs['p_kw'], q_kvar=kwargs['q_kvar'], name=kwargs['name'])
         elif device_type == 'dc_load':
-            pp.create_load(self.network, bus=self.dc_bus_load, p_kw=kwargs['p_kw'], q_kvar=kwargs['q_kvar'], name=kwargs['name'])
-        
-        # elif device_type == 'pv':
-        #     pp.create_sgen(self.network, bus=self.dc_bus_pv, p_kw=kwargs['p_kw'], vm_pu=kwargs['vm_pu'], name=kwargs['name'])
-        # elif device_type == 'line':
-        #     pp.create_line(self.network, from_bus=kwargs['from_bus'], to_bus=kwargs['to_bus'], length_km=kwargs['length_km'], 
-        #                    r_ohm_per_km=kwargs['r_ohm_per_km'], x_ohm_per_km=kwargs['x_ohm_per_km'], c_nf_per_km=kwargs['c_nf_per_km'], max_i_ka=kwargs['max_i_ka'], name=kwargs['name'])
-        # elif device_type == 'ess':
-        #     pp.create_storage(self.network, bus=self.dc_bus_ess, p_kw=kwargs['p_kw'], max_e_mwh=kwargs['max_e_mwh'],name=kwargs['name'])
+            pp.create_load(self.network, bus=self.dc_bus_load, p_kw=kwargs['p_kw'], q_kvar=kwargs['q_kvar'], name=kwargs['name'])       
 
     
     def simulate(self):
-        """Run the power flow simulation."""
-        if self.battery_mode == "charging":
-            pp.set_storage(
-                self.network, 
-                self.battery_storage, 
-                p_mw=self.battery_power * self.battery_dc_bus_efficiency / 1000  # Charging power
-            )
-        elif self.battery_mode == "discharging":
-            pp.set_storage(
-                self.network, 
-                self.battery_storage, 
-                p_mw=-self.battery_power * self.battery_dc_bus_efficiency / 1000  # Discharging power
-            )
 
         pp.runpp(self.network)
         
@@ -272,9 +235,3 @@ class bi_converter_controller(controller):
 
 # Example usage
 converter_controller = ConverterController(net, ac_bus=bus_ac, dc_bus=bus_dc, efficiency=0.95)
-# Example of how to use this class
-building_network = BuildingElectricityNetwork(name="Office Building")
-building_network.add_device(device_type='load', bus=building_network.grid_bus, p_kw=100, q_kvar=30)
-building_network.simulate()
-results = building_network.get_results()
-print(results)
