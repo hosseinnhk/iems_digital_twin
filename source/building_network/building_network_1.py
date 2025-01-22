@@ -1,6 +1,8 @@
 
 import pandapower as pp
 from pandapower.control import controller
+import pandapower.topology as top
+import networkx as nx
 
 
 class BuildingElectricityNetwork:
@@ -23,8 +25,8 @@ class BuildingElectricityNetwork:
 
         
         self._establish_network() 
-        self._add_dc_pv_converter_and_pv()
-        self._add_dc_ess_converter_and_storage()
+        self._add_pv_setup()
+        self._add_battery_storage()
         self._add_bi_ac_dc_converter()
         
         # self._add_dc_dc_socket()
@@ -70,36 +72,48 @@ class BuildingElectricityNetwork:
         self.ev_switch_2 = pp.create_switch(self.network, self.ac_bus_2, element=self.ev_bus, et="b", closed=False, name="EV charger relay 2")
         self.ev_switch_3 = pp.create_switch(self.network, self.ac_bus_3, element=self.ev_bus, et="b", closed=False, name="EV charger relay 3")
 
+        self.mg = top.create_nxgraph(self.network)
 
-    def _add_dc_pv_converter_and_pv(self):
-        dc_to_dc_loss=(1-self.pv_dc_bus_effieciency)*self.pv_output_power  # loss in kW
+    def _add_pv_setup(self):
         
-        self.pv_conv_loss=pp.create_load(self.network,  
+        # dc_to_dc_loss = (1 - self.pv_dc_bus_effieciency) * self.pv_output_power  # loss in kW
+        
+        self.pv_conv_loss = pp.create_load(self.network,  
             bus=self.dc_bus_pv, 
-            p_mw=(dc_to_dc_loss/1000), 
-            name="mppt to dc/dc loss"
-        )  # loss for mppt converter
+            p_mw= 0.0,
+            name="pv converter loss"
+        ) 
 
-        dc_power = self.pv_output_power * self.pv_dc_bus_effieciency  # power injected into pv dc bus
+        # dc_power = self.pv_output_power * self.pv_dc_bus_effieciency  # power injected into pv dc bus
         self.pv_setup = pp.create_sgen(self.network, 
             bus = self.dc_bus_pv, 
-            p_mw = (dc_power/1000), 
-            name = "pv to main dc bus injection", 
-            type = "DC"
+            p_mw = 0.0, 
+            q_mvar=0.0,
+            sn_mva=0.0, # Nominal power of the generator
+            name = "pv setup", 
+            type = "PV"
         )
         
-    def _add_dc_ess_converter_and_storage(self):
-        dc_to_dc_loss = (1 - self.ess_dc_bus_efficiency) * self.ess_exchange_power  # loss in kW
+    def _add_battery_storage(self):
+        # dc_to_dc_loss = (1 - self.ess_dc_bus_efficiency) * self.ess_exchange_power  # loss in kW
         
-        self.ess_cov_loss = pp.create_load(self.network, bus=self.dc_bus_ess, p_mw=(dc_to_dc_loss/1000), name="ess dc/dc converter loss")  # loss for mppt converter
+        self.ess_cov_loss = pp.create_load(self.network, 
+            bus = self.dc_bus_ess, 
+            p_mw = 0.0, 
+            name = "ess dc/dc converter loss"
+        ) 
 
-        ess_power = self.ess_exchange_power * self.ess_dc_bus_efficiency  
+        # ess_power = self.ess_exchange_power * self.ess_dc_bus_efficiency  
     
         self.battery_storage = pp.create_storage(
             self.network,
             bus = self.dc_bus_ess, 
-            p_mw = ess_power / 1000,  # Power in MW
-            max_e_mwh = self.ess_capacity / 1000,  # Energy capacity in MWh
+            p_mw = 0.0,  # Power in MW
+            max_e_mwh = 0.0, # The maximum energy content of the storage (maximum charge level)
+            min_e_mwh = 0.0, # The minimum energy content of the storage (minimum charge level)
+            max_p_mw = 0.0,  # The maximum power input/output of the storage
+            min_p_mw = 0.0,  # The minimum power input/output of the storage
+            soc_percent = 0.0,  # The state of charge (SOC) of the storage
             efficiency = 1, 
             soc_initial = self.ess_initial_soc,  
             name="Battery Storage"
@@ -115,7 +129,7 @@ class BuildingElectricityNetwork:
         ac_to_dc_efficiency = self.ac_dc_converter_efficiency  # Efficiency for AC to DC conversion
         dc_to_ac_efficiency = self.dc_ac_converter_efficiency  # Efficiency for DC to AC conversion
 
-        rated_power = self.ac_dc_converter_rated_power  # Maximum power in kW
+        rated_power = self.ac_dc_converter__ratedpower 
 
         ac_to_dc_loss = (1 - ac_to_dc_efficiency) * rated_power  # Loss in kW
 
@@ -165,18 +179,27 @@ class BuildingElectricityNetwork:
             pp.set_sgen(self.network, self.dc_to_ac_converter, p_mw=(rated_power * dc_to_ac_efficiency / 1000))        
         
         
-    def add_components(self, device_type, **kwargs):
+    def add_load(self, device_type, **kwargs):
+        
         if device_type == 'ac_load':
-            pp.create_load(self.network, bus=self.ac_bus, p_kw=kwargs['p_kw'], q_kvar=kwargs['q_kvar'], name=kwargs['name'])
+            if kwargs['bus'] == 'ac_bus_1':
+                pp.create_load(self.network, bus=self.ac_bus_1, p_kw=kwargs['p_kw'], q_kvar=kwargs['q_kvar'], name=kwargs['name'])
+            elif kwargs['bus'] == 'ac_bus_2':
+                pp.create_load(self.network, bus=self.ac_bus_2, p_kw=kwargs['p_kw'], q_kvar=kwargs['q_kvar'], name=kwargs['name'])
+            elif kwargs['bus'] == 'ac_bus_3':
+                pp.create_load(self.network, bus=self.ac_bus_3, p_kw=kwargs['p_kw'], q_kvar=kwargs['q_kvar'], name=kwargs['name'])
+        elif device_type == 'ev_charger':
+            pp.create_load(self.network, bus=self.ev_bus, p_kw=kwargs['p_kw'], q_kvar=kwargs['q_kvar'], name=kwargs['name'])
         elif device_type == 'dc_load':
-            pp.create_load(self.network, bus=self.dc_bus, p_kw=kwargs['p_kw'], q_kvar=kwargs['q_kvar'], name=kwargs['name'])
-        elif device_type == 'pv':
-            pp.create_sgen(self.network, bus=self.dc_bus_pv, p_kw=kwargs['p_kw'], vm_pu=kwargs['vm_pu'], name=kwargs['name'])
-        elif device_type == 'line':
-            pp.create_line(self.network, from_bus=kwargs['from_bus'], to_bus=kwargs['to_bus'], length_km=kwargs['length_km'], 
-                           r_ohm_per_km=kwargs['r_ohm_per_km'], x_ohm_per_km=kwargs['x_ohm_per_km'], c_nf_per_km=kwargs['c_nf_per_km'], max_i_ka=kwargs['max_i_ka'], name=kwargs['name'])
-        elif device_type == 'ess':
-            pp.create_storage(self.network, bus=self.dc_bus_ess, p_kw=kwargs['p_kw'], max_e_mwh=kwargs['max_e_mwh'],name=kwargs['name'])
+            pp.create_load(self.network, bus=self.dc_bus_load, p_kw=kwargs['p_kw'], q_kvar=kwargs['q_kvar'], name=kwargs['name'])
+        
+        # elif device_type == 'pv':
+        #     pp.create_sgen(self.network, bus=self.dc_bus_pv, p_kw=kwargs['p_kw'], vm_pu=kwargs['vm_pu'], name=kwargs['name'])
+        # elif device_type == 'line':
+        #     pp.create_line(self.network, from_bus=kwargs['from_bus'], to_bus=kwargs['to_bus'], length_km=kwargs['length_km'], 
+        #                    r_ohm_per_km=kwargs['r_ohm_per_km'], x_ohm_per_km=kwargs['x_ohm_per_km'], c_nf_per_km=kwargs['c_nf_per_km'], max_i_ka=kwargs['max_i_ka'], name=kwargs['name'])
+        # elif device_type == 'ess':
+        #     pp.create_storage(self.network, bus=self.dc_bus_ess, p_kw=kwargs['p_kw'], max_e_mwh=kwargs['max_e_mwh'],name=kwargs['name'])
 
     
     def simulate(self):
