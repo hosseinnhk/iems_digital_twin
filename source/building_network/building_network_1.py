@@ -120,6 +120,16 @@ class BuildingElectricityNetwork:
             type="storage"
             )
     
+    pp.create_voltage_source_converter(
+    net,
+    bus=bus_ac2,          # Connected to AC Bus 2
+    bus_dc=bus_dc,        # Connected to DC Bus
+    control_mode="PQ",    # Active/Reactive power control
+    p_mw=10,              # Inject 10 MW into AC Bus 2 (inverter mode)
+    q_mvar=0,             # No reactive power
+    power_efficiency_percent=100,
+    name="VSC2"
+)
         
     def _add_bi_ac_dc_converter(self):
         
