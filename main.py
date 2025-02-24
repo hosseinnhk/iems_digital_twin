@@ -51,7 +51,7 @@ for j in range (10):
 
 # ess.dynamic_plot(ess.state)
 plot_parameters = ["state_of_charge", "state_of_health", "current", "temperature"]
-ess.plot_results(results, plot_parameters, save_plot=False)
+ess.plot_results(results, plot_parameters, save_plot=True)
 
 
 

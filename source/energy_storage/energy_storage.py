@@ -7,6 +7,7 @@ import logging
 import random
 import os
 
+
 class EnergyStorageModel:
     
     def __init__(self):
@@ -296,9 +297,9 @@ class EnergyStorageModel:
         parameter_values["Initial temperature [K]"] = parameters["ambient_temperature [°C]"] + 273.15
         parameter_values['Current function [A]' ] = self._cell_current
         
-        sim = pybamm.Simulation(self.model, parameter_values=parameter_values, var_pts=self.var_pts)
-        sol = sim.solve([0,1], initial_soc=self._attributes["state_of_charge_init [%]"]/100)
-        self._cell_voltage = sol["Terminal voltage [V]"].data[-1]
+        # sim = pybamm.Simulation(self.model, parameter_values=parameter_values, var_pts=self.var_pts)
+        # sol = sim.solve([0,1], initial_soc=self._attributes["state_of_charge_init [%]"]/100)
+        # self._cell_voltage = sol["Terminal voltage [V]"].data[-1]
         self._voltage = self._cell_voltage * self._attributes["cell_series_number [uint]"]
         
         self._cell_power = self._cell_current * self._cell_voltage # Power, in Watts (W)
@@ -597,8 +598,8 @@ class EnergyStorageModel:
             plt.savefig(filename)
             print(f"Figure saved as {filename}")
 
-        plt.tight_layout()
-        plt.show()      
+        # plt.tight_layout()
+        # plt.show()      
 
     def _select_unit(self, label: str) -> str:            
         if "Voltage" in label:
