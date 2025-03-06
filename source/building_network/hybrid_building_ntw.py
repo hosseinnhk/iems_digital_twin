@@ -41,9 +41,9 @@ class BuildingElectricityNetwork:
         self.ext_grid_2 = pp.create_ext_grid(self.network, bus=self.grid_bus_2, vm_pu=1.0, max_p_mw= 0.005, min_p_mw=-0.005, name="grid connection 2")
         self.ext_grid_3 = pp.create_ext_grid(self.network, bus=self.grid_bus_3, vm_pu=1.0, max_p_mw= 0.005, min_p_mw=-0.005, name="grid connection 3")
         
-        self.grid_bus_1 = pp.create_ext_grid(self.network, vn_kv=self.grid_voltage/1000, name="grid connection bus 1")
-        self.grid_bus_2 = pp.create_ext_grid(self.network, vn_kv=self.grid_voltage/1000, name="grid connection bus 2")
-        self.grid_bus_3 = pp.create_ext_grid(self.network, vn_kv=self.grid_voltage/1000, name="grid connection bus 3")
+        self.grid_bus_1 = pp.create_bus(self.network, vn_kv=self.grid_voltage/1000, name="grid connection bus 1")
+        self.grid_bus_2 = pp.create_bus(self.network, vn_kv=self.grid_voltage/1000, name="grid connection bus 2")
+        self.grid_bus_3 = pp.create_bus(self.network, vn_kv=self.grid_voltage/1000, name="grid connection bus 3")
         
         self.ac_bus_1 = pp.create_bus(self.network, vn_kv=self.grid_voltage/1000, name="ac bus 1")
         self.ac_bus_2 = pp.create_bus(self.network, vn_kv=self.grid_voltage/1000, name="ac bus 2")
@@ -206,16 +206,12 @@ class ConverterController(controller):
         self.efficiency = efficiency
 
     def control_step(self):
-        # Access power at the DC bus
         dc_load = self.net.load.at[self.dc_bus, "p_mw"]
         
-        # Calculate required AC power
-        ac_power = dc_load / self.efficiency  # Adjust for losses
+        ac_power = dc_load / self.efficiency
         
-        # Update AC bus generation or supply
         self.net.sgen.at[self.ac_bus, "p_mw"] = ac_power
         
-        # Model converter losses (optional)
         loss = ac_power - dc_load
         # print(f"AC Power: {ac_power} MW, Loss: {loss:.4f} MW")
     

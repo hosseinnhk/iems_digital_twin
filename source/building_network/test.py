@@ -13,15 +13,12 @@ class CustomStorageController(controller):
         self.soc_max = soc_max
 
     def control_step(self):
-        # Access simulation results
-        pv_output = self.net.sgen.at[self.pv_index, 'p_mw']  # Current PV generation
-        load_demand = self.net.load.at[self.load_index, 'p_mw']  # Current load demand
+        pv_output = self.net.sgen.at[self.pv_index, 'p_mw']  
+        load_demand = self.net.load.at[self.load_index, 'p_mw']  
         storage = self.net.storage.loc[self.storage_index]
 
-        # Calculate net power
         net_power = pv_output - load_demand  # Positive: excess, Negative: deficit
 
-        # Determine storage behavior
         if net_power > 0:  # Surplus PV
             charge_power = min(net_power, storage.max_p_mw)  # Max charging limit
             self.soc += charge_power / storage.max_e_mwh  # Update SOC
@@ -35,13 +32,11 @@ class CustomStorageController(controller):
         else:  # Idle
             self.net.storage.at[self.storage_index, 'p_mw'] = 0
 
-        # Print SOC for debugging
         print(f"Step {self.time_step}: SOC = {self.soc:.2f}")
 
     def is_converged(self):
         return True
 
-# Example usage with pandapower network
 net = pp.create_empty_network()
 
 # Add buses
