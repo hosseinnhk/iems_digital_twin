@@ -336,19 +336,19 @@ class BuildingPowerFlowSimulator:
         )  # 1440 minutes in a day
         self.setup_network()
 
-    def generate_synthetic_profiles(self):
-        """Generate synthetic time series for PV and load."""
-        # Time in hours for PV generation (sinusoidal pattern)
-        hours = np.linspace(0, 24, len(self.timesteps))
-        pv_profile = self.pv_capacity * np.sin(np.pi * hours / 12) * (hours > 6) * (hours < 18)
-        pv_profile = np.clip(pv_profile, 0, self.pv_capacity)  # Limit to capacity
+    # def generate_synthetic_profiles(self):
+    #     """Generate synthetic time series for PV and load."""
+    #     # Time in hours for PV generation (sinusoidal pattern)
+    #     hours = np.linspace(0, 24, len(self.timesteps))
+    #     pv_profile = self.pv_capacity * np.sin(np.pi * hours / 12) * (hours > 6) * (hours < 18)
+    #     pv_profile = np.clip(pv_profile, 0, self.pv_capacity)  # Limit to capacity
 
-        # Load profile: base load with peaks in morning and evening
-        load_profile = self.load_peak * (0.5 + 0.3 * np.sin(np.pi * hours / 12) + 
-                                        0.2 * np.sin(2 * np.pi * hours / 12))
-        load_profile = np.clip(load_profile, 0, self.load_peak * 1.2)
+    #     # Load profile: base load with peaks in morning and evening
+    #     load_profile = self.load_peak * (0.5 + 0.3 * np.sin(np.pi * hours / 12) + 
+    #                                     0.2 * np.sin(2 * np.pi * hours / 12))
+    #     load_profile = np.clip(load_profile, 0, self.load_peak * 1.2)
 
-        return pv_profile, load_profile
+    #     return pv_profile, load_profile
 
     def setup_network(self):
         """Set up the PyPSA network with components."""
