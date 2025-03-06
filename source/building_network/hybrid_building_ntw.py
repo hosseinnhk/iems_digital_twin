@@ -7,6 +7,7 @@ import networkx as nx
 
 class BuildingElectricityNetwork:
     def __init__(self, name, grid_voltage=400, dc_voltage=350,):
+        
         self.name = name
         self.grid_voltage = grid_voltage
         self.dc_voltage = dc_voltage
@@ -23,7 +24,6 @@ class BuildingElectricityNetwork:
         self.ess_initial_soc = 0.0
         self.ess_capacity = 0.0
 
-        
         self._establish_network() 
         self._add_pv_setup()
         self._add_battery_storage()
