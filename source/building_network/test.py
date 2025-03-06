@@ -1,6 +1,7 @@
 import pandapower as pp
 import pandapower.timeseries as ts
 from pandapower.control import controller
+import pandas as pd
 
 class CustomStorageController(controller):
     def __init__(self, net, storage_index, pv_index, load_index, soc_initial=0.5, soc_min=0.2, soc_max=1.0, name=None, **kwargs):
@@ -63,3 +64,7 @@ storage_controller = CustomStorageController(net, storage_index=storage_index, p
 # Run time-series simulation
 time_steps = len(load_data)
 ts.run_timeseries(net, time_steps=time_steps)
+
+
+
+
