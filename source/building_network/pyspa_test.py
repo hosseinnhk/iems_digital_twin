@@ -43,7 +43,7 @@ class BuildingPowerFlowSimulator:
         self.network.add("Generator", "grid_supply",
                          bus="grid_bus",
                          p_nom=1000,  # Large capacity
-                         marginal_cost=0.1)
+                         marginal_cost=0.5)
 
     def add_load(self, name, phases, p_set, peak_power=None):
         """
@@ -165,6 +165,76 @@ class BuildingPowerFlowSimulator:
                 "disch_efficiency": disch_efficiency
             }
             
+    def add_battery(self, name, phases, capacity, charge_power, discharge_power, 
+                e_initial=None, soc_min=0.2, soc_max=1.0, ch_efficiency=0.95, disch_efficiency=0.95):
+        """
+        Add a battery storage unit to the network (single-phase or multi-phase).
+        
+        Parameters:
+        - name (str): Unique label for the battery
+        - phases (str or list): "A", "B", "C" or ["A", "B", "C"]
+        - capacity (float): Battery energy capacity (kWh)
+        - charge_power (float): Maximum charging power (kW)
+        - discharge_power (float): Maximum discharging power (kW)
+        - e_initial (float): Initial energy (kWh); defaults to 50% of capacity
+        - soc_min (float): Minimum state of charge (0 to 1); default 0.2
+        - soc_max (float): Maximum state of charge (0 to 1); default 1.0
+        - ch_efficiency (float): Charging efficiency (0 to 1); default 0.95
+        - disch_efficiency (float): Discharging efficiency (0 to 1); default 0.95
+        """
+        if name in self.storage_units:
+            raise ValueError(f"Battery '{name}' already exists.")
+        
+        if isinstance(phases, str):
+            phases = [phases]
+        for phase in phases:
+            if phase not in self.phases:
+                raise ValueError(f"Invalid phase: {phase}")
+
+        if not (0 <= soc_min <= soc_max <= 1):
+            raise ValueError("soc_min and soc_max must be between 0 and 1, with soc_min <= soc_max.")
+        if not (0 < ch_efficiency <= 1 and 0 < disch_efficiency <= 1):
+            raise ValueError("Charging and discharging efficiencies must be between 0 and 1.")
+        if capacity <= 0 or charge_power <= 0 or discharge_power <= 0:
+            raise ValueError("Capacity, charge_power, and discharge_power must be positive.")
+
+        # Default initial energy is 50% of capacity if not specified
+        e_initial = e_initial if e_initial is not None else capacity * 0.5
+
+        # Add battery as a StorageUnit for each specified phase
+        for phase in phases:
+            battery_name = f"{name}_phase_{phase}"
+            # Split capacity and power across phases
+            p_nom = max(charge_power, discharge_power) / len(phases)  # Nominal power is the max of charge/discharge
+            max_hours = (capacity / len(phases)) / p_nom  # Energy-to-power ratio
+            
+            self.network.add("StorageUnit", battery_name,
+                            bus=f"building_bus_phase_{phase}",
+                            p_nom=p_nom,
+                            p_nom_extendable=False,
+                            p_min_pu=-charge_power / (p_nom * len(phases)),  # Negative for charging
+                            p_max_pu=discharge_power / (p_nom * len(phases)),  # Positive for discharging
+                            state_of_charge_initial=e_initial,
+                            max_hours=max_hours,
+                            # e_initial = e_initial,
+                            efficiency_store=ch_efficiency,
+                            efficiency_dispatch=disch_efficiency,
+                            marginal_cost=0.02,  # Moderate cost to balance usage
+                            cyclic_state_of_charge=True)  # SOC returns to initial value over the day
+            
+            # Store metadata for tracking
+            self.storage_units[battery_name] = {
+                "phases": phases,
+                "capacity": capacity,
+                "charge_power": charge_power,
+                "discharge_power": discharge_power,
+                "soc_min": soc_min,
+                "soc_max": soc_max,
+                "ch_efficiency": ch_efficiency,
+                "disch_efficiency": disch_efficiency
+            }            
+        
+            
  
     def run_simulation(self):
         """Run the power flow simulation with fully integrated storage optimization."""
@@ -202,8 +272,10 @@ class BuildingPowerFlowSimulator:
         results = {
             "loads": {name: self.network.loads_t.p_set[name] for name in self.loads},
             "pv_generation": {name: self.network.generators_t.p[name] for name in self.pv_systems},
-            "storage_power": {name: self.network.stores_t.p[name] for name in self.storage_units},
-            "storage_state": {name: self.network.stores_t.e[name] for name in self.storage_units},
+            # "storage_power": {name: self.network.stores_t.p[name] for name in self.storage_units},
+            # "storage_state": {name: self.network.stores_t.e[name] for name in self.storage_units},
+            "storage_power": {name: self.network.storage_units_t.p[name] for name in self.storage_units},
+            "storage_state": {name: self.network.storage_units_t.state_of_charge[name] for name in self.storage_units},
             "grid_import_export": {f"grid_link_phase_{phase}": self.network.links_t.p0[f"grid_link_phase_{phase}"]
                                    for phase in self.phases},
             "grid_supply": self.network.generators_t.p["grid_supply"]
@@ -319,7 +391,7 @@ if __name__ == "__main__":
     # simulator.add_storage("battery", ["C"] , capacity=20)  # Single-phase storage on Phase C
     # Add a storage unit
     # simulator.add_storage("battery", "A", capacity=20, ch_efficiency=0.95, disch_efficiency=0.95)
-    simulator.add_storage("battery", "A", capacity=20, charge_power=5, discharge_power=5,  ch_efficiency=0.95, disch_efficiency=0.95)
+    simulator.add_battery("battery", ["A", "B", "C"], capacity=20, charge_power=5, discharge_power=5, e_initial=10)
 
     # Run simulation
     simulator.run_simulation()
