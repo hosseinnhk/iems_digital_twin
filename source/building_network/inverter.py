@@ -3,7 +3,7 @@ from .electrical_component import ElectricalComponent
 
 class Inverter(ElectricalComponent):
     def __init__(self, id, bus_input, bus_output, input_technology="dc", output_technology="ac", 
-                 efficiency=0.95, max_power=10000.0, active=True):
+                 efficiency=0.95, max_power=10000.0, status="on"):
         """
         Initialize a generic inverter connecting two buses with configurable technologies.
         
@@ -18,7 +18,7 @@ class Inverter(ElectricalComponent):
         - active (bool): Whether the inverter is operational.
         """
         # Initialize base class with input bus as the primary bus
-        super().__init__(id, bus_input, phase_type="single", type="inverter", technology=input_technology, active=active)
+        super().__init__(id, bus_input, phase_type="single", type="inverter", technology=input_technology, status=status)
         self.bus_input = bus_input
         self.bus_output = bus_output
         self.input_technology = input_technology.lower()
@@ -71,7 +71,7 @@ class Inverter(ElectricalComponent):
 
     def get_power(self, side="output"):
         """Return power for specified side: 'input' or 'output'."""
-        if not self.active:
+        if self.status == "off":
             return 0.0 if (side == "input" and self.input_technology == "dc") or \
                           (side == "output" and self.output_technology == "dc") else complex(0, 0)
         if side == "input":
@@ -86,7 +86,7 @@ class Inverter(ElectricalComponent):
 
     def get_current(self, voltage, side="output"):
         """Calculate current for specified side."""
-        if not self.active or voltage == 0:
+        if self.status=="off" or voltage == 0:
             return 0.0 if (side == "input" and self.input_technology == "dc") or \
                           (side == "output" and self.output_technology == "dc") else complex(0, 0)
         power = self.get_power(side)

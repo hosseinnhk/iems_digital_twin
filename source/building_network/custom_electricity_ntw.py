@@ -1,6 +1,6 @@
 import numpy as np
 
-# Base class for all components
+# Base class for all electircal components
 class ElectricalComponent:
     def __init__(self, id, bus, phase_type="single"):
         self.id = id

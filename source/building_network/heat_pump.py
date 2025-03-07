@@ -3,7 +3,7 @@ from .electrical_component import ElectricalComponent
 
 class HeatPump(ElectricalComponent):
     def __init__(self, id, bus, rated_power=2000.0, cop=3.0, mode="heating", 
-                 phase_type="single", technology="ac", voltage_rating=None, active=True):
+                 phase_type="single", technology="ac", voltage_rating=None, status="on"):
         """
         Initialize a heat pump for heating or cooling.
         
@@ -22,7 +22,7 @@ class HeatPump(ElectricalComponent):
         self.cop = float(cop)
         self.mode = mode.lower()
         super().__init__(id, bus, phase_type=phase_type, type="heat_pump", technology=technology, 
-                         voltage_rating=voltage_rating, active=active)
+                         voltage_rating=voltage_rating, status=status)
 
         self._validate_inputs()
 
@@ -43,7 +43,7 @@ class HeatPump(ElectricalComponent):
         - power_fraction (float): Fraction of rated power (0 to 1).
         Returns: Thermal output in watts.
         """
-        if not self.active:
+        if self.status == "off":
             return 0.0
         if not 0 <= power_fraction <= 1:
             raise ValueError(f"power_fraction must be between 0 and 1, got {power_fraction}")
@@ -61,7 +61,7 @@ class HeatPump(ElectricalComponent):
 
     def get_power(self):
         """Return current electrical power consumed."""
-        if not self.active:
+        if self.status == "off":
             return 0.0 if self.technology == "dc" else complex(0, 0)
         if self.technology == "dc":
             return self.active_power
@@ -69,7 +69,7 @@ class HeatPump(ElectricalComponent):
 
     def get_thermal_output(self):
         """Return current thermal power output (positive for heating, negative for cooling)."""
-        if not self.active:
+        if self.status == "off":
             return 0.0
         thermal_output = self.active_power * self.cop
         return thermal_output if self.mode == "heating" else -thermal_output

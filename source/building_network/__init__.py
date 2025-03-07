@@ -11,5 +11,6 @@ from .pv import PV
 from .heat_pump import HeatPump
 from .ev_charger import EVCharger
 from .network import Network
+from .load import Load
 
-__all__ = ["ElectricalComponent", "Inverter", "Bus", "EnergyStorage", "Line", "Grid", "PV", "HeatPump", "EVCharger", "Network"]
+__all__ = ["ElectricalComponent", "Inverter", "Bus", "EnergyStorage", "Line", "Grid", "PV", "HeatPump", "EVCharger", "Network", "Load"]

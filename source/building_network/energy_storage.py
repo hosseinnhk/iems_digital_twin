@@ -4,7 +4,7 @@ from .electrical_component import ElectricalComponent
 class EnergyStorage(ElectricalComponent):
     def __init__(self, id, bus, capacity, initial_soc=0.5, max_charge_power=1000.0, 
                  max_discharge_power=1000.0, efficiency=0.95, phase_type="single", 
-                 technology="dc", voltage_rating=None, active=True):
+                 technology="dc", voltage_rating=None, status="on"):
         """
         Initialize an energy storage component (e.g., battery).
         
@@ -27,7 +27,7 @@ class EnergyStorage(ElectricalComponent):
         self.max_discharge_power = float(max_discharge_power)
         self.efficiency = float(efficiency)
         super().__init__(id, bus, phase_type=phase_type, type="storage", technology=technology, 
-                         voltage_rating=voltage_rating, active=active)
+                         voltage_rating=voltage_rating, status=status)
 
         self._validate_inputs()
 
@@ -51,7 +51,7 @@ class EnergyStorage(ElectricalComponent):
         - time_step (float): Time duration in hours (default 1 hour).
         Returns: Actual power absorbed (considering limits).
         """
-        if not self.active:
+        if self.status =="off":
             return 0.0
         if power < 0:
             raise ValueError("Charging power must be positive")
@@ -79,7 +79,7 @@ class EnergyStorage(ElectricalComponent):
         - time_step (float): Time duration in hours (default 1 hour).
         Returns: Actual power supplied (considering limits).
         """
-        if not self.active:
+        if self.status =="off":
             return 0.0
         if power < 0:
             raise ValueError("Discharging power must be positive")
@@ -100,7 +100,7 @@ class EnergyStorage(ElectricalComponent):
 
     def get_power(self):
         """Return current power (negative for charging, positive for discharging)."""
-        if not self.active:
+        if self.status =="off":
             return 0.0 if self.technology == "dc" else complex(0, 0)
         if self.technology == "dc":
             return self.active_power

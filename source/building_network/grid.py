@@ -4,7 +4,7 @@ from .electrical_component import ElectricalComponent
 class Grid(ElectricalComponent):
     
     def __init__(self, id, bus, max_power=10000.0, voltage=230.0, phase_type="single", 
-                 technology="ac", active=True):
+                 technology="ac", status="on"):
         """
         Initialize an external grid connection.
         
@@ -24,7 +24,7 @@ class Grid(ElectricalComponent):
 
         # Now call parent init, which triggers _validate_inputs()
         super().__init__(id, bus, phase_type=phase_type, type="grid", technology=technology, 
-                         voltage_rating=voltage, active=active)
+                         voltage_rating=voltage, status=status)
         
         self._validate_inputs()
 
@@ -38,7 +38,7 @@ class Grid(ElectricalComponent):
             raise ValueError("Tuple voltage is only valid for three-phase grids")
 
     def supply_power(self, required_power):
-        if not self.active:
+        if self.status == "off":
             return 0.0 if self.technology == "dc" else complex(0, 0)
         if self.max_power is None:  # Unlimited capacity
             self.active_power = required_power.real if self.technology == "ac" else required_power
@@ -69,13 +69,13 @@ class Grid(ElectricalComponent):
 
     def enforce_voltage(self):
         """Set the bus voltage to the grid's nominal voltage."""
-        if self.active:
+        if self.status == "on":
             self.bus.set_voltage(self.voltage)
 
 
     def get_power(self):
         """Return current power (positive = supplying, negative = absorbing)."""
-        if not self.active:
+        if self.status == "off":
             return 0.0 if self.technology == "dc" else complex(0, 0)
         if self.technology == "dc":
             return self.active_power

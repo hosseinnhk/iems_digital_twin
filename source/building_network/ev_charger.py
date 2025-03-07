@@ -4,7 +4,7 @@ from .electrical_component import ElectricalComponent
 class EVCharger(ElectricalComponent):
     def __init__(self, id, bus, max_charge_power=7000.0, max_discharge_power=7000.0, 
                  efficiency=0.95, ev_capacity=40000.0, initial_soc=0.5, 
-                 phase_type="single", technology="ac", voltage_rating=None, active=True):
+                 phase_type="single", technology="ac", voltage_rating=None, status="on"):
         """
         Initialize an EV charger with bidirectional (V2B/V2G) capability.
         
@@ -28,7 +28,7 @@ class EVCharger(ElectricalComponent):
         self.soc = float(initial_soc)
         self.state = "idle"  # "idle", "charging", "discharging"
         super().__init__(id, bus, phase_type=phase_type, type="ev_charger", technology=technology, 
-                         voltage_rating=voltage_rating, active=active)
+                         voltage_rating=voltage_rating, status=status)
 
         self._validate_inputs()
 
@@ -52,7 +52,7 @@ class EVCharger(ElectricalComponent):
         - time_step (float): Duration in hours (default 1 hour).
         Returns: Actual power consumed from the bus.
         """
-        if not self.active:
+        if self.status == "off":
             return 0.0
         if power < 0:
             raise ValueError("Charging power must be positive")
@@ -80,7 +80,7 @@ class EVCharger(ElectricalComponent):
         - time_step (float): Duration in hours (default 1 hour).
         Returns: Actual power supplied to the bus.
         """
-        if not self.active:
+        if self.status == "off":
             return 0.0
         if power < 0:
             raise ValueError("Discharging power must be positive")
@@ -107,7 +107,7 @@ class EVCharger(ElectricalComponent):
 
     def get_power(self):
         """Return current power (positive = charging, negative = discharging)."""
-        if not self.active:
+        if self.status == "off":
             return 0.0 if self.technology == "dc" else complex(0, 0)
         if self.technology == "dc":
             return self.active_power

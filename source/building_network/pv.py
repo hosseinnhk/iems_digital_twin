@@ -3,7 +3,7 @@ from .electrical_component import ElectricalComponent
 
 class PV(ElectricalComponent):
     def __init__(self, id, bus, max_power=5000.0, efficiency=0.18, area=10.0, 
-                 phase_type="single", technology="dc", voltage_rating=None, active=True):
+                 phase_type="single", technology="dc", voltage_rating=None, status="on"):
         """
         Initialize a photovoltaic (PV) system.
         
@@ -23,7 +23,7 @@ class PV(ElectricalComponent):
         self.area = float(area)
         self.current_irradiance = 0.0  # W/m², set via generate_power        
         super().__init__(id, bus, phase_type=phase_type, type="generator", technology=technology, 
-                         voltage_rating=voltage_rating, active=active)
+                         voltage_rating=voltage_rating, status=status)
 
         self._validate_inputs()
 
@@ -44,7 +44,7 @@ class PV(ElectricalComponent):
         - irradiance (float): Solar irradiance in W/m².
         Returns: Actual power generated in watts.
         """
-        if not self.active:
+        if self.status == "off":
             return 0.0
         if irradiance < 0:
             raise ValueError(f"irradiance must be non-negative, got {irradiance}")
@@ -58,7 +58,7 @@ class PV(ElectricalComponent):
 
     def get_power(self):
         """Return current power generated."""
-        if not self.active:
+        if self.status == "off":
             return 0.0 if self.technology == "dc" else complex(0, 0)
         if self.technology == "dc":
             return self.active_power

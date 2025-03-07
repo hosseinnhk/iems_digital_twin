@@ -263,7 +263,7 @@ class BuildingPowerFlowSimulator:
         #     self.network.stores_t.p[storage_name] = p_set
 
         print("Simulation completed successfully.")
-
+ 
     def get_results(self):
         """Extract and return simulation results."""
         if not hasattr(self.network, "objective"):

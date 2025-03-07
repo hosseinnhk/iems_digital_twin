@@ -1,5 +1,5 @@
 # iems_digital_twin/main.py
-from source.building_network import ElectricalComponent, Inverter, Bus, EnergyStorage, Line, Grid, PV, HeatPump, EVCharger, Network
+from source.building_network import ElectricalComponent, Inverter, Bus, EnergyStorage, Line, Grid, PV, HeatPump, EVCharger, Network, Load
 
 if __name__ == "__main__":
     # Create network
@@ -14,21 +14,15 @@ if __name__ == "__main__":
     network.add_bus(ac_bus)
 
     # Add components
-    load = ElectricalComponent(
+    load = Load(
         id="Load1",
         bus=ac_bus,
-        type="load",
         technology="ac",
         active_power=1000.0,
-        reactive_power=200.0
-    )
-    gen = ElectricalComponent(
-        id="Gen1",
-        bus=dc_bus1,
-        type="generator",
-        technology="dc",
-        active_power=1200.0
-    )
+        reactive_power=200.0,
+        flexibility_type="shiftable",
+        max_shiftable_time=60.0
+    )  
     inv = Inverter(
         id="Inv1",
         bus_input=dc_bus2,
@@ -93,7 +87,6 @@ if __name__ == "__main__":
     )
 
     network.add_component(load)
-    network.add_component(gen)
     network.add_component(inv)
     network.add_component(storage)
     network.add_component(line)
