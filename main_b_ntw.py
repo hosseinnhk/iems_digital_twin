@@ -21,8 +21,10 @@ if __name__ == "__main__":
         active_power=1000.0,
         reactive_power=200.0,
         flexibility_type="shiftable",
-        max_shiftable_time=60.0
+        max_shiftable_time=60.0,
+        phase_type="single"
     )  
+    
     inv = Inverter(
         id="Inv1",
         bus_input=dc_bus2,
@@ -31,6 +33,7 @@ if __name__ == "__main__":
         output_technology="ac",
         efficiency=0.95
     )
+    
     storage = EnergyStorage(
         id="Battery1",
         bus=dc_bus2,
@@ -41,6 +44,7 @@ if __name__ == "__main__":
         technology="dc",
         voltage_rating=48.0
     )
+    
     line = Line(
         id="Line1",
         bus_from=dc_bus1,
@@ -49,6 +53,7 @@ if __name__ == "__main__":
         resistance=0.05,
         technology="dc"
     )
+    
     grid = Grid(
         id="Grid1",
         bus=ac_bus,
@@ -56,6 +61,7 @@ if __name__ == "__main__":
         voltage=230.0,
         technology="ac"
     )
+    
     pv = PV(
         id="PV1",
         bus=dc_bus2,
@@ -65,6 +71,7 @@ if __name__ == "__main__":
         technology="dc",
         voltage_rating=48.0
     )
+    
     heat_pump = HeatPump(
         id="HP1",
         bus=ac_bus,
@@ -74,6 +81,7 @@ if __name__ == "__main__":
         technology="ac",
         voltage_rating=230.0
     )
+    
     ev_charger = EVCharger(
         id="EV1",
         bus=ac_bus,
@@ -95,32 +103,33 @@ if __name__ == "__main__":
     network.add_component(heat_pump)
     network.add_component(ev_charger)
 
+    # network.print_summary()
     # Simulate behavior
     storage.charge(800.0, time_step=1.0)
-    print(f"Storage charged, SoC: {storage.soc:.2f}, Power: {storage.get_power()}")
+    # print(f"Storage charged, SoC: {storage.soc:.2f}, Power: {storage.get_power()}")
     pv_power = pv.generate_power(irradiance=1000.0)
-    print(f"PV generated: {pv_power} W")
+    # print(f"PV generated: {pv_power} W")
     thermal_output = heat_pump.set_operating_condition(power_fraction=0.8)
-    print(f"Heat Pump thermal output: {thermal_output} W")
+    # print(f"Heat Pump thermal output: {thermal_output} W")
     ev_charge_power = ev_charger.charge(5000.0, time_step=1.0)  # Charge at 5 kW
-    print(f"EV charging, SoC: {ev_charger.soc:.2f}, Power: {ev_charge_power} W")
+    # print(f"EV charging, SoC: {ev_charger.soc:.2f}, Power: {ev_charge_power} W")
     inv.set_input_power(1000.0)
     inv.set_output_reactive_power(100.0)
     ac_bus_balance = ac_bus.get_power_balance()
     grid_power = grid.supply_power(-ac_bus_balance)
-    print(f"AC Bus balance before grid: {ac_bus_balance}")
-    print(f"Grid supplies/absorbs: {grid_power}")
+    # print(f"AC Bus balance before grid: {ac_bus_balance}")
+    # print(f"Grid supplies/absorbs: {grid_power}")
 
-    # Simulate V2B/V2G
+    # # Simulate V2B/V2G
     ev_discharge_power = ev_charger.discharge(3000.0, time_step=1.0)  # Discharge 3 kW
-    print(f"EV discharging (V2B/V2G), SoC: {ev_charger.soc:.2f}, Power: {ev_discharge_power} W")
+    # print(f"EV discharging (V2B/V2G), SoC: {ev_charger.soc:.2f}, Power: {ev_discharge_power} W")
     ac_bus_balance = ac_bus.get_power_balance()
     grid_power = grid.supply_power(-ac_bus_balance)
-    print(f"AC Bus balance after V2B: {ac_bus_balance}")
-    print(f"Grid supplies/absorbs after V2B: {grid_power}")
+    # print(f"AC Bus balance after V2B: {ac_bus_balance}")
+    # print(f"Grid supplies/absorbs after V2B: {grid_power}")
 
-    # Print network status
+    # # Print network status
     print("Network Status:", network.get_status())
 
     # Visualize
-    network.visualize()
+    # network.visualize()

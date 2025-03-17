@@ -1,4 +1,5 @@
 # source/building_network/bus.py
+from .print_theme import *
 
 class Bus:
     def __init__(self, id, technology="ac", phase_type="single", nominal_voltage=230.0):
@@ -44,7 +45,7 @@ class Bus:
         - component: Instance of ElectricalComponent or Inverter.
         - side (str, optional): For Inverters, "input" or "output"; None for single-bus components.
         """
-        from .inverter import Inverter  # Import here to avoid circular import
+        from .inverter import Inverter  
         
         if isinstance(component, Inverter):
             if side not in {"input", "output"}:
@@ -62,8 +63,12 @@ class Bus:
                             f"does not match bus {self.id} technology ({self.technology})")
         
         self.components.append((component, side))
-        print(f"Connected {component.id} to bus {self.id}" + (f" ({side} side)" if side else ""))
+        # print(f"Connected {component.id} to bus {self.id}" + (f" ({side} side)" if side else ""))
+        print_message_network(f"Connected {component.id} to bus {self.id}" + (f" ({side} side)" if side else ""))
 
+    # def append_component(self, component):
+    #     self.components.append((component, None))
+        
     def get_power_balance(self):
         """
         Calculate the net power balance at this bus.

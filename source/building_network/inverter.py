@@ -1,5 +1,6 @@
 # source/building_network/inverter.py
 from .electrical_component import ElectricalComponent
+# from .print_theme import *
 
 class Inverter(ElectricalComponent):
     def __init__(self, id, bus_input, bus_output, input_technology="dc", output_technology="ac", 
@@ -26,9 +27,9 @@ class Inverter(ElectricalComponent):
         self.efficiency = efficiency
         self.max_power = max_power
         self.input_active_power = 0.0  # Active power on input side (W)
-        self.input_reactive_power = 0.0  # Reactive power on input side (VAR, AC only)
+        self.input_reactive_power = 0.0  # Reactive power on input side (VAR)
         self.output_active_power = 0.0  # Active power on output side (W)
-        self.output_reactive_power = 0.0  # Reactive power on output side (VAR, AC only)
+        self.output_reactive_power = 0.0  # Reactive power on output side (VAR)
         self._validate_technologies()
 
     def _validate_technologies(self):
@@ -117,9 +118,11 @@ class Inverter(ElectricalComponent):
         if side == "input":
             self.bus_input = bus
             self.bus = bus  # Update base class bus for compatibility
-            print(f"{self.id} input side connected to bus {bus.id}")
+            # print(f"{self.id} input side connected to bus {bus.id}")
+            # print_message_network(f"{self.id} input side connected to bus {bus.id}")
         elif side == "output":
             self.bus_output = bus
-            print(f"{self.id} output side connected to bus {bus.id}")
+            # print(f"{self.id} output side connected to bus {bus.id}")
+            # print_message_network(f"{self.id} output side connected to bus {bus.id}")
         else:
             raise ValueError("Side must be 'input' or 'output'")

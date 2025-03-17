@@ -1,4 +1,6 @@
 # source/building_network/electrical_component.py
+from .print_theme import *
+
 class ElectricalComponent:
     def __init__(self, id, bus, phase_type="single", type="load", technology="ac", 
                  voltage_rating=None, active_power=0.0, reactive_power=0.0, status="on"):
@@ -73,4 +75,6 @@ class ElectricalComponent:
 
     def connect_to_bus(self, bus):
         self.bus = bus
-        print(f"{self.id} connected to bus {bus.id}")
+        # print(f"Initialized {self.id} to connect to bus {bus.id}")
+        print_message_network(f"Initialized {self.id} to connect to bus {bus.id}")
+       
