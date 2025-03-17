@@ -37,12 +37,15 @@ class Network:
             if component.bus_from.id not in self.buses or component.bus_to.id not in self.buses:
                 raise ValueError("Both line buses must be added to the network first")
             self.lines.append(component)
+            self.buses[component.bus_from.id].connect_component(component)
+            self.buses[component.bus_to.id].connect_component(component)
         elif isinstance(component, ElectricalComponent):
             if component.bus.id not in self.buses:
                 raise ValueError("Component bus must be added to the network first")
             self.components.append(component)
-            # self.buses[component.bus.id].components.append(component)
+            
             self.buses[component.bus.id].connect_component(component)
+            # self.buses[component.bus.id].components_append(component)
         else:
             raise ValueError("Must be an ElectricalComponent, Inverter, or Line")
         # print(f"Added {component.id} to network")
