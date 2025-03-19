@@ -19,13 +19,17 @@ class Inverter(ElectricalComponent):
         - active (bool): Whether the inverter is operational.
         """
         # Initialize base class with input bus as the primary bus
-        super().__init__(id, bus_input, phase_type="single", type="inverter", technology=input_technology, status=status)
+        super().__init__(id, bus_input, phase_type="single", type="inverter",  status=status)
         self.bus_input = bus_input
         self.bus_output = bus_output
         self.input_technology = input_technology.lower()
         self.output_technology = output_technology.lower()
         self.efficiency = efficiency
         self.max_power = max_power
+        
+        # if self.phase_type =="three":
+        #     self.bus_input.nodes=['A', 'B', 'C']
+        #     self.bus_output
         self.input_active_power = 0.0  # Active power on input side (W)
         self.input_reactive_power = 0.0  # Reactive power on input side (VAR)
         self.output_active_power = 0.0  # Active power on output side (W)
@@ -113,15 +117,17 @@ class Inverter(ElectricalComponent):
         })
         return base_status
 
-    def connect_to_bus(self, bus, side="input"):
+    def connect_to_bus(self, bus, side="input", node=None):
         """Connect to a bus on the specified side."""
         if side == "input":
             self.bus_input = bus
             self.bus = bus  # Update base class bus for compatibility
+            # self.bus.node=node
             # print(f"{self.id} input side connected to bus {bus.id}")
             # print_message_network(f"{self.id} input side connected to bus {bus.id}")
         elif side == "output":
             self.bus_output = bus
+            # self.bus.node=node
             # print(f"{self.id} output side connected to bus {bus.id}")
             # print_message_network(f"{self.id} output side connected to bus {bus.id}")
         else:

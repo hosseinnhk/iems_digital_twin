@@ -38,23 +38,19 @@ class Bus:
             raise ValueError("Tuple voltage is only valid for three-phase buses")
 
     def connect_component(self, component, side=None):
-        """
-        Connect an ElectricalComponent or Inverter to this bus.
         
-        Parameters:
-        - component: Instance of ElectricalComponent or Inverter.
-        - side (str, optional): For Inverters, "input" or "output"; None for single-bus components.
-        """
         from .inverter import Inverter  
+        from .line import Line
         
         if isinstance(component, Inverter):
             if side not in {"input", "output"}:
                 raise ValueError("Inverter connection requires side='input' or 'output'")
             component.connect_to_bus(self, side)
+        elif isinstance(component, Line):
+            component.connect_to_bus(self, side)
         else:
             component.connect_to_bus(self)
         
-        # Validate technology compatibility
         component_technology = component.input_technology if isinstance(component, Inverter) and side == "input" else \
                               component.output_technology if isinstance(component, Inverter) and side == "output" else \
                               component.technology
@@ -63,12 +59,9 @@ class Bus:
                             f"does not match bus {self.id} technology ({self.technology})")
         
         self.components.append((component, side))
-        # print(f"Connected {component.id} to bus {self.id}" + (f" ({side} side)" if side else ""))
         print_message_network(f"Connected {component.id} to bus {self.id}" + (f" ({side} side)" if side else ""))
 
-    # def append_component(self, component):
-    #     self.components.append((component, None))
-        
+
     def get_power_balance(self):
         """
         Calculate the net power balance at this bus.

@@ -1,7 +1,8 @@
 # iems_digital_twin/main.py
-from source.building_network import ElectricalComponent, Inverter, Bus, EnergyStorage, Line, Grid, PV, HeatPump, EVCharger, Network, Load
+from source.building_network import Inverter, Bus, EnergyStorage, Line, Grid, PV, HeatPump, EVCharger, Network, Load
 
 if __name__ == "__main__":
+
     # Create network
     network = Network()
 
@@ -12,21 +13,52 @@ if __name__ == "__main__":
     network.add_bus(dc_bus1)
     network.add_bus(dc_bus2)
     network.add_bus(ac_bus)
-
+    
+    # Add grid
+    grid = Grid(
+        id="Grid1",
+        bus=ac_bus,
+        max_power=10000.0,
+        voltage=230.0,
+        technology="ac"
+    )
+    
+    
     # Add components
     load = Load(
-        id="Load1",
+        id="Phone charger",
         bus=ac_bus,
         technology="ac",
-        active_power=1000.0,
-        reactive_power=200.0,
+        active_power=10.0,
+        reactive_power=20.0,
         flexibility_type="shiftable",
         max_shiftable_time=60.0,
-        phase_type="single"
+        phase_type="single",
+        voltage_rating=230.0
+    )  
+    
+    load2 = Load(
+        id="Oven",
+        bus=ac_bus,
+        technology="ac",
+        active_power=2000.0,
+        reactive_power=200.0,
+        flexibility_type="nonshiftable",
+        phase_type="three",
+        voltage_rating=130.0
     )  
     
     inv = Inverter(
         id="Inv1",
+        bus_input=dc_bus2,
+        bus_output=ac_bus,
+        input_technology="dc",
+        output_technology="ac",
+        efficiency=0.95
+    )
+    
+    inv2 = Inverter(
+        id="Inv2",
         bus_input=dc_bus2,
         bus_output=ac_bus,
         input_technology="dc",
@@ -44,24 +76,7 @@ if __name__ == "__main__":
         technology="dc",
         voltage_rating=48.0
     )
-    
-    line = Line(
-        id="Line1",
-        bus_from=dc_bus1,
-        bus_to=dc_bus2,
-        length=10.0,
-        resistance=0.05,
-        technology="dc"
-    )
-    
-    grid = Grid(
-        id="Grid1",
-        bus=ac_bus,
-        max_power=10000.0,
-        voltage=230.0,
-        technology="ac"
-    )
-    
+      
     pv = PV(
         id="PV1",
         bus=dc_bus2,
@@ -82,6 +97,17 @@ if __name__ == "__main__":
         voltage_rating=230.0
     )
     
+    heat_pump_2 = HeatPump(
+        id="HP2",
+        bus=ac_bus,
+        rated_power=2200.0,
+        cop=2.5,
+        mode="heating",
+        technology="ac",
+        phase_type="three",
+        voltage_rating=130.0
+    )
+    
     ev_charger = EVCharger(
         id="EV1",
         bus=ac_bus,
@@ -93,19 +119,32 @@ if __name__ == "__main__":
         technology="ac",
         voltage_rating=230.0
     )
+    
+    #Add line
+    line = Line(
+        id="Line1",
+        bus_from=dc_bus1,
+        bus_to=dc_bus2,
+        length=10.0,
+        resistance=0.05,
+        technology="dc"
+    )
 
+    network.add_component(grid)
     network.add_component(load)
+    network.add_component(load2)
     network.add_component(inv)
+    network.add_component(inv2)
     network.add_component(storage)
     network.add_component(line)
-    network.add_component(grid)
     network.add_component(pv)
     network.add_component(heat_pump)
+    network.add_component(heat_pump_2)
     network.add_component(ev_charger)
 
     # network.print_summary()
     # Simulate behavior
-    storage.charge(800.0, time_step=1.0)
+    storage.charge(1000.0, time_step=1.0)
     # print(f"Storage charged, SoC: {storage.soc:.2f}, Power: {storage.get_power()}")
     pv_power = pv.generate_power(irradiance=1000.0)
     # print(f"PV generated: {pv_power} W")
@@ -130,6 +169,7 @@ if __name__ == "__main__":
 
     # # Print network status
     print("Network Status:", network.get_status())
+    # print(network.components)
 
     # Visualize
-    # network.visualize()
+    network.visualize()

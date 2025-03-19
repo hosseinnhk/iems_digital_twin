@@ -5,6 +5,7 @@ from .bus import Bus
 from .electrical_component import ElectricalComponent
 from .inverter import Inverter
 from .line import Line
+from .grid import Grid
 from .print_theme import *
 
 class Network:
@@ -37,20 +38,22 @@ class Network:
             if component.bus_from.id not in self.buses or component.bus_to.id not in self.buses:
                 raise ValueError("Both line buses must be added to the network first")
             self.lines.append(component)
-            self.buses[component.bus_from.id].connect_component(component)
-            self.buses[component.bus_to.id].connect_component(component)
-        elif isinstance(component, ElectricalComponent):
+            self.buses[component.bus_from.id].connect_component(component, side="from")
+            self.buses[component.bus_to.id].connect_component(component, side="to")
+        elif isinstance(component, (ElectricalComponent,Grid)):
             if component.bus.id not in self.buses:
                 raise ValueError("Component bus must be added to the network first")
-            self.components.append(component)
+            if isinstance(component, ElectricalComponent):
+                self.components.append(component)
             
             self.buses[component.bus.id].connect_component(component)
             # self.buses[component.bus.id].components_append(component)
+        # elif isinstance(component, Grid):
+        #     self.buses[component.bus.id].connect_component(component)
         else:
             raise ValueError("Must be an ElectricalComponent, Inverter, or Line")
         # print(f"Added {component.id} to network")
         print_message_network(f"Added {component.id} to network")
-
 
     def print_summary(self):
         from rich.console import Console

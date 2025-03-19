@@ -47,15 +47,15 @@ def print_message_network(message):
 def print_network_status(network):
 
     # Print power status in a table
-    table = Table(title="Power Status", title_style="title")
+    table = Table(title="Building Electricity Network", title_style="title")
     table.add_column("title", style="component")
     table.add_column("technology", style="value")
     table.add_column("voltage", style="value")
     table.add_column("connected components", style="component")
 
     for bus_id, bus in network.buses.items():
-        print(bus.components)
-        components = ", ".join([f"{comp}" for comp in bus.components]) or "None"
+        components = ", ".join([f"{comp.id} ({comp.__class__.__name__.lower()})" for comp, _ in bus.components]) or "None"
+
         table.add_row(
             bus_id,
             bus.technology,
@@ -63,39 +63,34 @@ def print_network_status(network):
             components
         )
     console.print(table)
+          
+    from collections import defaultdict
+    
+    components_by_class = defaultdict(list)
+    for comp in network.components:
+        components_by_class[comp.__class__].append(comp)
+
+    for comp_class, comps in components_by_class.items():
+        table = Table(title=f"{comp_class.__name__} Overview", title_style="title")
+        specific_attributes = set()
+        table.add_column("ID", style="component")
         
-    # power_status = [
-    #     ("Storage", "charged, SoC: 0.65, Power: -800.0 W"),
-    #     ("PV", "generated: 1800.0 W"),
-    #     ("Heat Pump", "thermal output: 7000.0 W"),
-    #     ("EV", "charging, SoC: 0.62, Power: 5000.0 W"),
-    #     # Add more status lines as needed
-    # ]
+        for comp in comps:
+            
+            specific_attributes.update(vars(comp).keys())
+            discard_attributes = {"id","bus", "type"}
+            specific_attributes-=discard_attributes
 
-    # for component, status in power_status:
-    #     table.add_row(component, status)
-
-    # console.print(table)
-
-    # # Print network status in a structured format
-    # console.print("\n[title]Network Status Details[/title]")
-    # for bus, details in network_status.items():
-    #     console.print(f"\n[bus]{bus}[/]:")
-    #     for key, value in details.items():
-    #         if key == "connected_components":
-    #             console.print(f"  {key}:")
-    #             for comp in value:
-    #                 console.print(f"    - [component]{comp}[/]")
-    #         else:
-    #             console.print(f"  {key}: [value]{value}[/]")
-
-# # Your network status dictionary
-# network_status = {
-#     'DC_Bus1': {'id': 'DC_Bus1', 'technology': 'dc', 'phase_type': 'single', 'nominal_voltage': 48.0, 'current_voltage': 48.0, 'connected_components': [], 'power_balance': 0.0},
-#     'DC_Bus2': {'id': 'DC_Bus2', 'technology': 'dc', 'phase_type': 'single', 'nominal_voltage': 48.0, 'current_voltage': 48.0, 'connected_components': [('Inv1', 'input'), ('Battery1', None), ('PV1', None)], 'power_balance': 2000.0},
-#     'AC_Bus1': {'id': 'AC_Bus1', 'technology': 'ac', 'phase_type': 'single', 'nominal_voltage': 230.0, 'current_voltage': 230.0, 'connected_components': [('Load1', None), ('Inv1', 'output'), ('Grid1', None), ('HP1', None), ('EV1', None)], 'power_balance': (7050+1500j)}
-# }
-
-# Call the function with your data
-if __name__ == "__main__":
-    print_network_status(network_status)
+            
+        for attr in sorted(specific_attributes):
+            table.add_column(attr, style="value")
+        
+        for comp in comps:    
+            row_data = [
+            str(comp.id),
+            ]
+            for attr in sorted(specific_attributes):
+                row_data.append(str(getattr(comp, attr, "")))
+            table.add_row(*row_data)  
+             
+        console.print(table)

@@ -1,5 +1,6 @@
 # source/building_network/line.py
 from .bus import Bus
+from .electrical_component import ElectricalComponent
 
 class Line:
     def __init__(self, id, bus_from, bus_to, length=1.0, resistance=0.01, reactance=0.0, 
@@ -58,15 +59,21 @@ class Line:
         if self.technology == "dc":
             return self.resistance
         return complex(self.resistance, self.reactance)
+    
+    def connect_to_bus(self,bus, side=None):
+        """Connect the line to the two buses."""
+        self.bus = bus
+        if side == "from":
+            self.bus_from = bus
+            # print(f"Connected line {self.id} to bus {bus.id} on the 'from' side")
+        elif side == "to":
+            self.bus_to = bus
+            # print(f"Connected line {self.id} to bus {bus.id} on the 'to' side")
+        else:
+            raise ValueError("Line connection requires side='from' or 'to'")
 
     def calculate_power_loss(self, current):
-        """
-        Calculate power loss across the line given current.
-        
-        Parameters:
-        - current: Float (DC or single-phase AC magnitude) or complex (AC).
-        Returns: Power loss in watts (float for DC, complex for AC).
-        """
+
         if self.technology == "dc":
             return (current ** 2) * self.resistance
         # For AC, assume current is complex or magnitude; loss is I^2 * Z
@@ -79,7 +86,6 @@ class Line:
         return complex(active_loss, reactive_loss)
 
     def get_status(self):
-        """Return line status."""
         return {
             "id": self.id,
             "bus_from": self.bus_from.id,

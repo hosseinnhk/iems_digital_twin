@@ -1,10 +1,11 @@
 # source/building_network/grid.py
-from .electrical_component import ElectricalComponent
+# from .electrical_component import ElectricalComponent
+from .print_theme import *
 
-class Grid(ElectricalComponent):
+class Grid:
     
     def __init__(self, id, bus, max_power=10000.0, voltage=230.0, phase_type="single", 
-                 technology="ac", status="on"):
+                 technology="ac", status="on", active_power=0.0, reactive_power=0.0):
         """
         Initialize an external grid connection.
         
@@ -21,10 +22,18 @@ class Grid(ElectricalComponent):
         # Set Grid-specific attributes before parent init
         self.max_power = float(max_power)
         self.voltage = voltage  # Grid enforces this voltage at the bus
+        self.max_power = 0.0  # max power supplied (W)
+        self.active_power = active_power  # active power supplied (W)
+        self.reactive_power = reactive_power  # reactive power supplied (VAR)
+        self.status = status
+        self.bus = bus
+        self.id = id
+        self.phase_type = phase_type
+        self.technology = technology
 
-        # Now call parent init, which triggers _validate_inputs()
-        super().__init__(id, bus, phase_type=phase_type, type="grid", technology=technology, 
-                         voltage_rating=voltage, status=status)
+        # # Now call parent init, which triggers _validate_inputs()
+        # super().__init__(id, bus, phase_type=phase_type, type="grid", technology=technology, 
+        #                  voltage_rating=voltage, status=status)
         
         self._validate_inputs()
 
@@ -66,6 +75,11 @@ class Grid(ElectricalComponent):
             self.active_power = active
             self.reactive_power = reactive
             return complex(active, reactive)
+
+    def connect_to_bus(self, bus):
+        self.bus = bus
+        # print(f"Initialized {self.id} to connect to bus {bus.id}")
+        print_message_network(f"Initialized {self.id} to connect to bus {bus.id}")
 
     def enforce_voltage(self):
         """Set the bus voltage to the grid's nominal voltage."""
