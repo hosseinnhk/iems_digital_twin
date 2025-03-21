@@ -23,7 +23,6 @@ class Network:
         if not isinstance(bus, Bus):
             raise ValueError("Must be an instance of Bus")
         self.buses[bus.id] = bus
-        # print(f"Added bus {bus.id} to network")
         print_message_network(f"Added bus {bus.id} to network")
 
     def add_component(self, component):
@@ -33,7 +32,9 @@ class Network:
                 raise ValueError("Both inverter buses must be added to the network first")
             self.inverters.append(component)
             self.buses[component.bus_input.id].connect_component(component, side="input")
+            # self.buses[component.bus_output.id].connect_component(component, side="input", phase_list=component.input_nodes)
             self.buses[component.bus_output.id].connect_component(component, side="output")
+            # self.buses[component.bus_input.id].connect_component(component, side="output", phase_list=component.output_nodes)
         elif isinstance(component, Line):
             if component.bus_from.id not in self.buses or component.bus_to.id not in self.buses:
                 raise ValueError("Both line buses must be added to the network first")
@@ -47,12 +48,8 @@ class Network:
                 self.components.append(component)
             
             self.buses[component.bus.id].connect_component(component)
-            # self.buses[component.bus.id].components_append(component)
-        # elif isinstance(component, Grid):
-        #     self.buses[component.bus.id].connect_component(component)
         else:
             raise ValueError("Must be an ElectricalComponent, Inverter, or Line")
-        # print(f"Added {component.id} to network")
         print_message_network(f"Added {component.id} to network")
 
     def print_summary(self):

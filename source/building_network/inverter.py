@@ -4,7 +4,7 @@ from .electrical_component import ElectricalComponent
 
 class Inverter(ElectricalComponent):
     def __init__(self, id, bus_input, bus_output, input_technology="dc", output_technology="ac", 
-                 efficiency=0.95, max_power=10000.0, status="on"):
+                 efficiency=0.95, max_power=10000.0, status="on", phase_type="single", input_nodes=None, output_nodes=None):
         """
         Initialize a generic inverter connecting two buses with configurable technologies.
         
@@ -19,17 +19,15 @@ class Inverter(ElectricalComponent):
         - active (bool): Whether the inverter is operational.
         """
         # Initialize base class with input bus as the primary bus
-        super().__init__(id, bus_input, phase_type="single", type="inverter",  status=status)
+        super().__init__(id, bus_input, phase_type=phase_type, type="inverter",  status=status)
         self.bus_input = bus_input
         self.bus_output = bus_output
         self.input_technology = input_technology.lower()
         self.output_technology = output_technology.lower()
         self.efficiency = efficiency
         self.max_power = max_power
-        
-        # if self.phase_type =="three":
-        #     self.bus_input.nodes=['A', 'B', 'C']
-        #     self.bus_output
+        self.input_nodes =input_nodes
+        self.output_nodes=output_nodes
         self.input_active_power = 0.0  # Active power on input side (W)
         self.input_reactive_power = 0.0  # Reactive power on input side (VAR)
         self.output_active_power = 0.0  # Active power on output side (W)
@@ -117,16 +115,18 @@ class Inverter(ElectricalComponent):
         })
         return base_status
 
-    def connect_to_bus(self, bus, side="input", node=None):
+    def connect_to_bus(self, bus, side="input", node=['A']):
         """Connect to a bus on the specified side."""
         if side == "input":
             self.bus_input = bus
             self.bus = bus  # Update base class bus for compatibility
+            # self.input_nodes.append(node)
             # self.bus.node=node
             # print(f"{self.id} input side connected to bus {bus.id}")
             # print_message_network(f"{self.id} input side connected to bus {bus.id}")
         elif side == "output":
             self.bus_output = bus
+            # self.output_nodes.append(node)
             # self.bus.node=node
             # print(f"{self.id} output side connected to bus {bus.id}")
             # print_message_network(f"{self.id} output side connected to bus {bus.id}")

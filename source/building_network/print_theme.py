@@ -50,6 +50,7 @@ def print_network_status(network):
     table = Table(title="Building Electricity Network", title_style="title")
     table.add_column("title", style="component")
     table.add_column("technology", style="value")
+    table.add_column("phase_type", style="value")
     table.add_column("voltage", style="value")
     table.add_column("connected components", style="component")
 
@@ -59,6 +60,7 @@ def print_network_status(network):
         table.add_row(
             bus_id,
             bus.technology,
+            bus.phase_type,
             str(bus.nominal_voltage),
             components
         )

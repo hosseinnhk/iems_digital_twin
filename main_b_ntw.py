@@ -9,7 +9,7 @@ if __name__ == "__main__":
     # Add buses
     dc_bus1 = Bus(id="DC_Bus1", technology="dc", nominal_voltage=48.0)
     dc_bus2 = Bus(id="DC_Bus2", technology="dc", nominal_voltage=48.0)
-    ac_bus = Bus(id="AC_Bus1", technology="ac", nominal_voltage=230.0)
+    ac_bus = Bus(id="AC_Bus1", technology="ac", nominal_voltage=230.0, phase_type="three")
     network.add_bus(dc_bus1)
     network.add_bus(dc_bus2)
     network.add_bus(ac_bus)
@@ -20,9 +20,9 @@ if __name__ == "__main__":
         bus=ac_bus,
         max_power=10000.0,
         voltage=230.0,
-        technology="ac"
+        technology="ac",
+        phase_type= "three"
     )
-    
     
     # Add components
     load = Load(
@@ -54,6 +54,7 @@ if __name__ == "__main__":
         bus_output=ac_bus,
         input_technology="dc",
         output_technology="ac",
+        phase_type= "three",
         efficiency=0.95
     )
     
@@ -172,4 +173,4 @@ if __name__ == "__main__":
     # print(network.components)
 
     # Visualize
-    network.visualize()
+    # network.visualize()
